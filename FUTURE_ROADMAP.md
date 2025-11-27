@@ -9,10 +9,10 @@
 
 ### Phase 5: Core Language Enhancements (Next)
 
-#### Priority 1: Floating-Point Type (`phantom`)
-**Status**: 🔄 Ready to implement  
+#### Priority 1: Floating-Point Type (`phantom`) ✅
+**Status**: ✅ **COMPLETE**  
 **Impact**: High - Enables decimal/numeric operations  
-**Effort**: Medium (4-6 hours)
+**Effort**: Completed (4 hours)
 
 **Requirements:**
 - Add `phantom` keyword to lexer
@@ -165,9 +165,9 @@
 ## 📋 Implementation Order
 
 ### Version 0.3.0 (Next Release)
-1. ✅ Floating-point type (`phantom`)
-2. ✅ Enhanced error messages
-3. ✅ More Necronomicon courses
+1. ✅ Floating-point type (`phantom`) - **COMPLETE**
+2. 🔄 Enhanced error messages
+3. 🔄 More Necronomicon courses
 
 ### Version 0.4.0
 1. ✅ Full bytecode VM function support
