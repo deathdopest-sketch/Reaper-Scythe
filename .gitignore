@@ -196,3 +196,48 @@ site/
 *.dist/
 *.onefile-build/
 
+# Internal development files (not for customers)
+# Roadmaps and planning
+ENHANCEMENT_ROADMAP.md
+REAPER_AI_PROOF_PLAN.md
+REAPER_COMPLETION_PLAN.md
+REAPER_STANDALONE_BUILD_PLAN.md
+reaper day one plan.txt
+
+# Task queues and project management
+TASK_QUEUE.md
+STANDALONE_TASK_QUEUE.md
+COMPLETED_TASKS.md
+PROJECT_STATE.md
+STANDALONE_BUILD_STATE.md
+
+# Internal documentation
+AUDIT_REPORT.md
+GAP_ANALYSIS.md
+FEATURE_INVENTORY.md
+DECISIONS_LOG.md
+STANDALONE_DECISIONS_LOG.md
+ISSUES_LOG.md
+STANDALONE_ISSUES_LOG.md
+RESOURCES.md
+
+# Session and handoff docs
+SESSION_HANDOFF.md
+SESSION_SUMMARY.md
+TESTING_RESULTS.md
+INTEGRATION_TEST_SUMMARY.md
+RELEASE_CHECKLIST.md
+
+# GitHub setup (internal)
+GITHUB_SETUP.md
+GITHUB_READY.md
+QUICK_START_GITHUB.md
+
+# Backup and duplicate READMEs
+README_CRYPTIC_BACKUP.md
+README_TECHNICAL.md
+README_GITHUB.md
+
+# Checkpoints (internal development)
+checkpoints/
+
