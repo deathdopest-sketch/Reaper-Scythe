@@ -79,7 +79,7 @@ class Interpreter:
         # Secure string tracking for cleanup
         self.secure_strings = []
         
-        # Module loader
+        # Module loader (will be initialized with current file path when needed)
         self.module_loader = ReaperModuleLoader()
         
         # Async runtime
@@ -1051,8 +1051,8 @@ class Interpreter:
                 for key, value in namespace.items():
                     reaper_namespace[key] = self._convert_python_to_reaper(value)
                 
-                # Store namespace in environment
-                current_env.define(ns_name, reaper_namespace)
+                # Store namespace in environment as a grimoire (dictionary)
+                current_env.define(ns_name, reaper_namespace, "grimoire", False, node.line, node.column)
                 
         except ReaperRuntimeError as e:
             raise ReaperRuntimeError(

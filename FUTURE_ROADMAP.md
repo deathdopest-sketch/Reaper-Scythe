@@ -1,6 +1,6 @@
 # REAPER Language - Future Development Roadmap
 
-**Current Version**: 0.3.0  
+**Current Version**: 0.4.0  
 **Last Updated**: 2025-01-27
 
 ---
@@ -50,10 +50,10 @@
 
 ---
 
-#### Priority 3: Import/Module System
-**Status**: 🔄 Partially implemented (keywords exist)  
+#### Priority 3: Import/Module System ✅
+**Status**: ✅ **COMPLETE**  
 **Impact**: High - Enables library usage  
-**Effort**: High (10-14 hours)
+**Effort**: Completed (4 hours)
 
 **Requirements:**
 - Implement `INFILTRATE` keyword (import)

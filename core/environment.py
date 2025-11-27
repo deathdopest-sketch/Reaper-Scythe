@@ -363,6 +363,10 @@ class EnvironmentStack:
             raise RuntimeError("Cannot peek at empty environment stack")
         return self._stack[-1]
     
+    def current(self) -> Environment:
+        """Get current environment (alias for peek)."""
+        return self.peek()
+    
     def is_empty(self) -> bool:
         """Check if stack is empty."""
         return len(self._stack) == 0

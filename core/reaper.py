@@ -514,6 +514,13 @@ def run_file(filename: str, args: List[str], use_bytecode: bool = False) -> int:
         # Create interpreter
         interpreter = Interpreter()
         
+        # Set module loader's current file for relative imports
+        from pathlib import Path
+        file_path = Path(filename).resolve()
+        interpreter.module_loader.current_file = file_path
+        interpreter.module_loader.base_path = file_path.parent
+        interpreter.module_loader._update_search_paths()
+        
         # Set command-line arguments
         interpreter.global_environment.set_ritual_args(args)
         
