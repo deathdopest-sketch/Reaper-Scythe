@@ -1,6 +1,6 @@
 # REAPER Language - Future Development Roadmap
 
-**Current Version**: 0.4.0  
+**Current Version**: 0.5.0  
 **Last Updated**: 2025-01-27
 
 ---
@@ -70,10 +70,10 @@
 
 ---
 
-#### Priority 4: Exception Handling (`risk`/`catch`)
-**Status**: 🔄 Partially implemented (keywords exist)  
+#### Priority 4: Exception Handling (`risk`/`catch`) ✅
+**Status**: ✅ **COMPLETE**  
 **Impact**: High - Critical for robust code  
-**Effort**: Medium (6-8 hours)
+**Effort**: Completed (3 hours)
 
 **Requirements:**
 - Implement `risk` keyword (try block)

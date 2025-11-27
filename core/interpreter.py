@@ -17,7 +17,7 @@ from .rate_limiter import TokenBucket
 from .async_runtime import ReaperAsyncRuntime, AsyncTask
 from .module_loader import ReaperModuleLoader
 from .reaper_error import (
-    ReaperRuntimeError, ReaperTypeError, ReaperRecursionError, 
+    ReaperError, ReaperRuntimeError, ReaperTypeError, ReaperRecursionError, 
     ReaperMemoryError, ReaperIndexError, ReaperKeyError, 
     ReaperZeroDivisionError, suggest_similar_name
 )
@@ -599,6 +599,17 @@ class Interpreter:
         """Helper for property access."""
         obj = self._execute(node.object)
         
+        # Handle exception objects (ReaperError instances)
+        if isinstance(obj, ReaperError):
+            # Access exception attributes
+            if hasattr(obj, node.property_name):
+                return getattr(obj, node.property_name)
+            else:
+                raise ReaperAttributeError(
+                    f"Exception object has no attribute '{node.property_name}'",
+                    node.line, node.column, node.filename
+                )
+        
         if isinstance(obj, dict):
             # Class instance property access or module namespace access
             if node.property_name in obj:
@@ -638,11 +649,22 @@ class Interpreter:
                     key=node.property_name,
                     available_keys=["length"]
                 )
+        elif isinstance(obj, ReaperError):
+            # Exception object property access
+            if hasattr(obj, node.property_name):
+                return getattr(obj, node.property_name)
+            else:
+                raise ReaperKeyError(
+                    f"Exception object has no attribute '{node.property_name}'",
+                    node.line, node.column, node.filename,
+                    key=node.property_name,
+                    available_keys=["message", "line", "column", "filename", "context"]
+                )
         else:
             raise ReaperTypeError(
                 f"Cannot access property of {type(obj).__name__}",
                 node.line, node.column, node.filename,
-                expected_type="class instance, array, or string",
+                expected_type="class instance, array, string, or exception",
                 actual_type=type(obj).__name__,
                 operation="property access"
             )
@@ -1169,39 +1191,72 @@ class Interpreter:
     def visit_risk_node(self, node: RiskNode) -> Any:
         """Visit risk node (try/catch/finally for exception handling)."""
         exception_caught = None
-        exception_var = None
+        result = None
         
         # Execute try block
         try:
             result = self._execute(node.try_block)
-            return result
         except ReaperError as e:
             exception_caught = e
             
             # Find matching catch block
             for exception_type, var_name, catch_block in node.catch_blocks:
-                # Check if exception type matches (or catch-all if None)
-                if exception_type is None or exception_type == type(e).__name__ or exception_type == "ReaperError":
+                # Check if exception type matches
+                # None means catch-all
+                # Match by exact type name or base class name
+                matches = False
+                if exception_type is None:
+                    matches = True  # Catch-all
+                else:
+                    # Get the actual exception type name
+                    actual_type_name = type(e).__name__
+                    # Check exact match
+                    if exception_type == actual_type_name:
+                        matches = True
+                    # Check if it's a base class match (e.g., ReaperError catches all ReaperError subclasses)
+                    elif exception_type == "ReaperError" and isinstance(e, ReaperError):
+                        matches = True
+                    # Check inheritance (e.g., ReaperZeroDivisionError is a ReaperError)
+                    elif hasattr(e, '__class__'):
+                        # Check if the exception is an instance of the requested type
+                        exception_map = {
+                            "ReaperError": ReaperError,
+                            "ReaperSyntaxError": ReaperSyntaxError,
+                            "ReaperRuntimeError": ReaperRuntimeError,
+                            "ReaperTypeError": ReaperTypeError,
+                            "ReaperRecursionError": ReaperRecursionError,
+                            "ReaperMemoryError": ReaperMemoryError,
+                            "ReaperIndexError": ReaperIndexError,
+                            "ReaperKeyError": ReaperKeyError,
+                            "ReaperZeroDivisionError": ReaperZeroDivisionError,
+                        }
+                        requested_class = exception_map.get(exception_type)
+                        if requested_class and isinstance(e, requested_class):
+                            matches = True
+                
+                if matches:
                     # Store exception in variable if specified
                     if var_name:
                         # Create a new environment for the catch block
                         old_env = self.environment_stack.current()
                         catch_env = Environment(parent=old_env)
-                        catch_env.define(var_name, e)
+                        # Store exception object with proper type
+                        catch_env.define(var_name, e, "ReaperError", False, node.line, node.column)
                         self.environment_stack.push(catch_env)
                     
                     # Execute catch block
                     try:
                         result = self._execute(catch_block)
-                        return result
                     finally:
                         # Restore environment
                         if var_name:
                             self.environment_stack.pop()
                     
-                    break  # Exception handled, don't check other catch blocks
+                    # Exception handled, don't check other catch blocks
+                    exception_caught = None
+                    break
             
-            # No matching catch block found, exception will be re-raised
+            # Re-raise if not caught
             if exception_caught:
                 raise exception_caught
         except Exception as e:
@@ -1219,29 +1274,56 @@ class Interpreter:
             
             # Try to find matching catch block
             for exception_type, var_name, catch_block in node.catch_blocks:
-                if exception_type is None or (isinstance(exception_caught, ReaperError) and 
-                                             (exception_type == type(exception_caught).__name__ or 
-                                              exception_type == "ReaperError")):
+                matches = False
+                if exception_type is None:
+                    matches = True
+                elif isinstance(exception_caught, ReaperError):
+                    actual_type_name = type(exception_caught).__name__
+                    if exception_type == actual_type_name:
+                        matches = True
+                    elif exception_type == "ReaperError":
+                        matches = True
+                    else:
+                        exception_map = {
+                            "ReaperError": ReaperError,
+                            "ReaperSyntaxError": ReaperSyntaxError,
+                            "ReaperRuntimeError": ReaperRuntimeError,
+                            "ReaperTypeError": ReaperTypeError,
+                            "ReaperRecursionError": ReaperRecursionError,
+                            "ReaperMemoryError": ReaperMemoryError,
+                            "ReaperIndexError": ReaperIndexError,
+                            "ReaperKeyError": ReaperKeyError,
+                            "ReaperZeroDivisionError": ReaperZeroDivisionError,
+                        }
+                        requested_class = exception_map.get(exception_type)
+                        if requested_class and isinstance(exception_caught, requested_class):
+                            matches = True
+                
+                if matches:
                     if var_name:
                         old_env = self.environment_stack.current()
                         catch_env = Environment(parent=old_env)
-                        catch_env.define(var_name, exception_caught)
+                        catch_env.define(var_name, exception_caught, "ReaperError", False, node.line, node.column)
                         self.environment_stack.push(catch_env)
                     
                     try:
                         result = self._execute(catch_block)
-                        return result
                     finally:
                         if var_name:
                             self.environment_stack.pop()
+                    
+                    exception_caught = None
                     break
             
             # Re-raise if not caught
-            raise exception_caught
+            if exception_caught:
+                raise exception_caught
         finally:
-            # Execute finally block if present
+            # Execute finally block if present (always executes)
             if node.finally_block:
                 self._execute(node.finally_block)
+        
+        return result
     
     def visit_exploit_node(self, node: ExploitNode) -> Any:
         """Visit exploit node (try/catch for security operations - legacy)."""
