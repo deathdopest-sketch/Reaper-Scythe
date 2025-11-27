@@ -319,6 +319,68 @@ class Interpreter:
         self._check_memory_limit(elements, "array")
         return elements
     
+    def visit_list_comprehension_node(self, node: 'ListComprehensionNode') -> List[Any]:
+        """Visit list comprehension node: [expr for item in iterable if condition]."""
+        self._check_rate_limit("list_comprehension")
+        
+        # Evaluate the iterable
+        iterable = self._execute(node.iterable)
+        
+        # Check if iterable is actually iterable
+        if not isinstance(iterable, (list, str, dict)):
+            raise ReaperTypeError(
+                f"List comprehension iterable must be array, string, or dictionary, got {type(iterable).__name__}",
+                node.line,
+                node.column,
+                node.filename
+            )
+        
+        # Create new environment for the comprehension variable
+        current_env = self._get_current_environment()
+        comp_env = current_env.create_child()
+        self.environment_stack.push(comp_env)
+        
+        try:
+            result = []
+            
+            # Iterate over the iterable
+            # For dictionaries, iterate over keys (like Python)
+            if isinstance(iterable, dict):
+                items = iterable.keys()
+            elif isinstance(iterable, str):
+                items = iterable  # Iterate over characters
+            else:
+                items = iterable
+            
+            for item in items:
+                # Set the iteration variable
+                comp_env.define(node.item_name, item, "unknown", False, node.line, node.column)
+                
+                # Check condition if present
+                if node.condition is not None:
+                    condition_result = self._execute(node.condition)
+                    if not isinstance(condition_result, bool):
+                        raise ReaperTypeError(
+                            f"List comprehension condition must be boolean, got {type(condition_result).__name__}",
+                            node.line,
+                            node.column,
+                            node.filename
+                        )
+                    if not condition_result:
+                        continue  # Skip this item
+                
+                # Evaluate expression and add to result
+                value = self._execute(node.expression)
+                result.append(value)
+                
+                # Check memory limit
+                self._check_memory_limit(result, "array")
+            
+            return result
+        finally:
+            # Always pop the comprehension environment
+            self.environment_stack.pop()
+    
     def visit_dictionary_node(self, node: DictionaryNode) -> Dict[Any, Any]:
         """Visit dictionary literal node."""
         self._check_rate_limit("dictionary_creation")

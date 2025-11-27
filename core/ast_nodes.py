@@ -199,6 +199,26 @@ class ArrayNode(ASTNode):
         return f"ArrayNode({len(self.elements)} elements, {self.filename}:{self.line}:{self.column})"
 
 
+class ListComprehensionNode(ASTNode):
+    """Represents a list comprehension: [expr for item in iterable if condition]."""
+    
+    def __init__(self, expression: ASTNode, item_name: str, iterable: ASTNode, 
+                 condition: Optional[ASTNode] = None, line: int = 0, column: int = 0, 
+                 filename: str = "<unknown>"):
+        super().__init__(line, column, filename)
+        self.expression = expression  # Expression to evaluate for each item
+        self.item_name = item_name    # Variable name for iteration item
+        self.iterable = iterable      # Iterable to iterate over
+        self.condition = condition    # Optional filter condition
+    
+    def accept(self, visitor):
+        return visitor.visit_list_comprehension_node(self)
+    
+    def __repr__(self) -> str:
+        cond_str = f" if {self.condition}" if self.condition else ""
+        return f"ListComprehensionNode({self.item_name} in {self.iterable}{cond_str}, {self.filename}:{self.line}:{self.column})"
+
+
 class DictionaryNode(ASTNode):
     """Represents a dictionary literal."""
     

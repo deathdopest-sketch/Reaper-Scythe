@@ -1,3 +1,0 @@
-Hello from Reaper!
-This is a test file.
-Line 3

@@ -1,6 +1,6 @@
 # REAPER Language - Future Development Roadmap
 
-**Current Version**: 0.6.0  
+**Current Version**: 0.7.0  
 **Last Updated**: 2025-01-27
 
 ---
@@ -112,10 +112,10 @@
 
 ### Phase 6: Advanced Features
 
-#### List Comprehensions
-**Status**: 🔄 Planned  
+#### List Comprehensions ✅
+**Status**: ✅ **COMPLETE**  
 **Impact**: Medium - Code elegance  
-**Effort**: Medium (4-6 hours)
+**Effort**: Completed (2 hours)
 
 #### Switch/Match Statements
 **Status**: 🔄 Planned  

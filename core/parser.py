@@ -6,7 +6,7 @@ It converts tokens into an Abstract Syntax Tree (AST) with full operator precede
 error recovery, and comprehensive syntax support.
 """
 
-from typing import List, Optional, Tuple, Any
+from typing import List, Optional, Tuple, Any, Union
 from .tokens import Token, TokenType
 from .ast_nodes import *
 from .reaper_error import ReaperSyntaxError
@@ -852,17 +852,70 @@ class Parser:
         
         return InterpolatedStringNode(parts)
     
-    def _parse_array_literal(self) -> ArrayNode:
-        """Parse array literal."""
-        elements = []
+    def _parse_array_literal(self) -> Union[ArrayNode, 'ListComprehensionNode']:
+        """Parse array literal or list comprehension."""
+        start_token = self._peek()
         
-        if not self._check(TokenType.RBRACKET):
+        # Check if this is an empty array
+        if self._check(TokenType.RBRACKET):
+            self._consume(TokenType.RBRACKET, "Expected ']' after array")
+            return ArrayNode([], start_token.line, start_token.column, start_token.filename)
+        
+        # Parse first expression
+        first_expr = self._parse_expression()
+        
+        # Check if next token is 'for' - if so, it's a comprehension
+        if self._match(TokenType.FOR):
+            return self._parse_list_comprehension(first_expr, start_token)
+        
+        # Otherwise, it's a regular array literal
+        elements = [first_expr]
+        while self._match(TokenType.COMMA):
             elements.append(self._parse_expression())
-            while self._match(TokenType.COMMA):
-                elements.append(self._parse_expression())
         
         self._consume(TokenType.RBRACKET, "Expected ']' after array")
-        return ArrayNode(elements)
+        return ArrayNode(elements, start_token.line, start_token.column, start_token.filename)
+    
+    def _parse_list_comprehension(self, expression: ASTNode, start_token: Token) -> 'ListComprehensionNode':
+        """Parse list comprehension: [expr for item in iterable if condition]."""
+        # We've already parsed the expression and matched 'for'
+        # Now parse: item_name in iterable [if condition]
+        
+        # Parse item name (identifier)
+        if not self._check(TokenType.IDENTIFIER):
+            token = self._peek()
+            raise ReaperSyntaxError(
+                "Expected identifier after 'for' in list comprehension",
+                token.line,
+                token.column,
+                token.filename
+            )
+        item_token = self._advance()
+        item_name = item_token.value
+        
+        # Parse 'in' keyword
+        self._consume(TokenType.IN, "Expected 'in' after item name in list comprehension")
+        
+        # Parse iterable expression
+        iterable = self._parse_expression()
+        
+        # Parse optional 'if' condition
+        condition = None
+        if self._match(TokenType.IF):
+            condition = self._parse_expression()
+        
+        # Parse closing bracket
+        self._consume(TokenType.RBRACKET, "Expected ']' after list comprehension")
+        
+        return ListComprehensionNode(
+            expression,
+            item_name,
+            iterable,
+            condition,
+            start_token.line,
+            start_token.column,
+            start_token.filename
+        )
     
     def _parse_dictionary_literal(self) -> DictionaryNode:
         """Parse dictionary literal."""

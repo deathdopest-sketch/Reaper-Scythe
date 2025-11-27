@@ -43,6 +43,7 @@ class TokenType(Enum):
     FROM = "FROM"
     TO = "TO"
     IN = "IN"
+    FOR = "FOR"  # For list comprehensions
     INFILTRATE = "INFILTRATE"  # Import security modules
     CLOAK = "CLOAK"            # Enable anonymity features
     EXPLOIT = "EXPLOIT"        # Try/catch for security operations (legacy)
@@ -200,6 +201,7 @@ KEYWORDS = {
     "from": TokenType.FROM,
     "to": TokenType.TO,
     "in": TokenType.IN,
+    "for": TokenType.FOR,  # For list comprehensions
     "infiltrate": TokenType.INFILTRATE,  # Import security modules
     "cloak": TokenType.CLOAK,            # Enable anonymity features
     "exploit": TokenType.EXPLOIT,        # Try/catch for security operations (legacy)
