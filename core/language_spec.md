@@ -14,13 +14,19 @@ REAPER is a zombie/death-themed programming language that combines the power of 
 
 ## Type System
 
-REAPER has 7 fundamental types:
+REAPER has 8 fundamental types:
 
 ### 1. corpse (Integer)
-- **Purpose**: Whole numbers only (no floating-point)
+- **Purpose**: Whole numbers only
 - **Range**: Limited by Python's int (effectively unlimited)
 - **Operations**: All arithmetic, comparison, logical (as 0/1)
 - **Examples**: `corpse zombies = 10;`, `corpse health = -5;`
+
+### 1.5. phantom (Floating-Point) ⭐ NEW
+- **Purpose**: Decimal numbers for precise calculations
+- **Range**: Limited by Python's float (IEEE 754 double precision)
+- **Operations**: All arithmetic, comparison
+- **Examples**: `phantom pi = 3.14159;`, `phantom rate = 0.05;`
 
 ### 2. soul (String)
 - **Purpose**: Text data with escape sequence support

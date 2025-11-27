@@ -101,7 +101,8 @@ class Interpreter:
             "harvest": self._builtin_harvest,
             "rest": self._builtin_rest,
             "raise_corpse": self._builtin_raise_corpse,
-            "steal_soul": self._builtin_steal_soul,
+            "raise_phantom": self._builtin_raise_phantom,  # String to float
+            "steal_soul": self._builtin_steal_soul,  # Int/float to string
             "summon": self._builtin_summon,
             "final_rest": self._builtin_final_rest,
             "curse": self._builtin_curse,
@@ -1545,7 +1546,7 @@ class Interpreter:
             )
     
     def _builtin_steal_soul(self, arguments: List[Any], line: int, column: int) -> str:
-        """Built-in steal_soul (int to string) function."""
+        """Built-in steal_soul (int/float to string) function."""
         if len(arguments) != 1:
             raise ReaperRuntimeError(
                 f"steal_soul() expects 1 argument, got {len(arguments)}",
@@ -1553,9 +1554,39 @@ class Interpreter:
             )
         
         value = arguments[0]
-        self._check_type(value, int, "steal_soul argument", line, column)
+        # Accept both int (corpse) and float (phantom)
+        if isinstance(value, (int, float)):
+            return str(value)
+        else:
+            raise ReaperTypeError(
+                f"Cannot convert {type(value).__name__} to string",
+                line, column,
+                expected_type="corpse or phantom",
+                actual_type=type(value).__name__,
+                operation="type conversion"
+            )
+    
+    def _builtin_raise_phantom(self, arguments: List[Any], line: int, column: int) -> float:
+        """Built-in raise_phantom (string to float) function."""
+        if len(arguments) != 1:
+            raise ReaperRuntimeError(
+                f"raise_phantom() expects 1 argument, got {len(arguments)}",
+                line, column
+            )
         
-        return str(value)
+        value = arguments[0]
+        self._check_type(value, str, "raise_phantom argument", line, column)
+        
+        try:
+            return float(value)
+        except ValueError:
+            raise ReaperTypeError(
+                f"Cannot convert '{value}' to phantom (float)",
+                line, column,
+                expected_type="phantom",
+                actual_type="string",
+                operation="string to float conversion"
+            )
     
     def _builtin_summon(self, arguments: List[Any], line: int, column: int) -> str:
         """Built-in summon (read input) function."""
@@ -1604,7 +1635,7 @@ class Interpreter:
         
         return None
     
-    def _builtin_absolute(self, arguments: List[Any], line: int, column: int) -> int:
+    def _builtin_absolute(self, arguments: List[Any], line: int, column: int) -> Any:
         """Built-in absolute (abs) function."""
         if len(arguments) != 1:
             raise ReaperRuntimeError(
@@ -1613,11 +1644,19 @@ class Interpreter:
             )
         
         value = arguments[0]
-        self._check_type(value, int, "absolute argument", line, column)
-        
-        return abs(value)
+        # Support both int (corpse) and float (phantom)
+        if isinstance(value, (int, float)):
+            return abs(value)
+        else:
+            raise ReaperTypeError(
+                f"Cannot get absolute value of {type(value).__name__}",
+                line, column,
+                expected_type="corpse or phantom",
+                actual_type=type(value).__name__,
+                operation="absolute value"
+            )
     
-    def _builtin_lesser(self, arguments: List[Any], line: int, column: int) -> int:
+    def _builtin_lesser(self, arguments: List[Any], line: int, column: int) -> Any:
         """Built-in lesser (min) function."""
         if len(arguments) != 2:
             raise ReaperRuntimeError(
@@ -1626,12 +1665,19 @@ class Interpreter:
             )
         
         a, b = arguments[0], arguments[1]
-        self._check_type(a, int, "lesser first argument", line, column)
-        self._check_type(b, int, "lesser second argument", line, column)
-        
-        return min(a, b)
+        # Support both int (corpse) and float (phantom)
+        if isinstance(a, (int, float)) and isinstance(b, (int, float)):
+            return min(a, b)
+        else:
+            raise ReaperTypeError(
+                f"Cannot compare {type(a).__name__} and {type(b).__name__}",
+                line, column,
+                expected_type="corpse or phantom",
+                actual_type=f"{type(a).__name__} and {type(b).__name__}",
+                operation="minimum"
+            )
     
-    def _builtin_greater(self, arguments: List[Any], line: int, column: int) -> int:
+    def _builtin_greater(self, arguments: List[Any], line: int, column: int) -> Any:
         """Built-in greater (max) function."""
         if len(arguments) != 2:
             raise ReaperRuntimeError(
@@ -1640,10 +1686,17 @@ class Interpreter:
             )
         
         a, b = arguments[0], arguments[1]
-        self._check_type(a, int, "greater first argument", line, column)
-        self._check_type(b, int, "greater second argument", line, column)
-        
-        return max(a, b)
+        # Support both int (corpse) and float (phantom)
+        if isinstance(a, (int, float)) and isinstance(b, (int, float)):
+            return max(a, b)
+        else:
+            raise ReaperTypeError(
+                f"Cannot compare {type(a).__name__} and {type(b).__name__}",
+                line, column,
+                expected_type="corpse or phantom",
+                actual_type=f"{type(a).__name__} and {type(b).__name__}",
+                operation="maximum"
+            )
     
     def _builtin_excavate(self, arguments: List[Any], line: int, column: int) -> str:
         """Built-in excavate (read file) function."""
@@ -1816,7 +1869,10 @@ class Interpreter:
     
     def _add(self, left: Any, right: Any, line: int, column: int) -> Any:
         """Add two values."""
-        if isinstance(left, int) and isinstance(right, int):
+        # Support numeric types (int/corpse and float/phantom)
+        if isinstance(left, (int, float)) and isinstance(right, (int, float)):
+            return left + right
+        elif isinstance(left, int) and isinstance(right, int):
             return left + right
         elif isinstance(left, str) and isinstance(right, str):
             result = left + right
@@ -1856,50 +1912,92 @@ class Interpreter:
                 operation="addition"
             )
     
-    def _subtract(self, left: Any, right: Any, line: int, column: int) -> int:
+    def _subtract(self, left: Any, right: Any, line: int, column: int) -> Any:
         """Subtract two values."""
-        self._check_type(left, int, "subtraction left operand", line, column)
-        self._check_type(right, int, "subtraction right operand", line, column)
-        return left - right
+        # Support both int (corpse) and float (phantom)
+        if isinstance(left, (int, float)) and isinstance(right, (int, float)):
+            return left - right
+        else:
+            raise ReaperTypeError(
+                f"Cannot subtract {type(left).__name__} and {type(right).__name__}",
+                line, column,
+                expected_type="corpse or phantom",
+                actual_type=f"{type(left).__name__} and {type(right).__name__}",
+                operation="subtraction"
+            )
     
-    def _multiply(self, left: Any, right: Any, line: int, column: int) -> int:
+    def _multiply(self, left: Any, right: Any, line: int, column: int) -> Any:
         """Multiply two values."""
-        self._check_type(left, int, "multiplication left operand", line, column)
-        self._check_type(right, int, "multiplication right operand", line, column)
-        return left * right
-    
-    def _divide(self, left: Any, right: Any, line: int, column: int) -> int:
-        """Divide two values (integer division)."""
-        self._check_type(left, int, "division left operand", line, column)
-        self._check_type(right, int, "division right operand", line, column)
-        
-        if right == 0:
-            raise ReaperZeroDivisionError(
-                "Division by zero",
+        # Support both int (corpse) and float (phantom)
+        if isinstance(left, (int, float)) and isinstance(right, (int, float)):
+            return left * right
+        else:
+            raise ReaperTypeError(
+                f"Cannot multiply {type(left).__name__} and {type(right).__name__}",
                 line, column,
-                expression=f"{left} / {right}"
+                expected_type="corpse or phantom",
+                actual_type=f"{type(left).__name__} and {type(right).__name__}",
+                operation="multiplication"
             )
-        
-        return left // right  # Integer division
     
-    def _modulo(self, left: Any, right: Any, line: int, column: int) -> int:
+    def _divide(self, left: Any, right: Any, line: int, column: int) -> Any:
+        """Divide two values."""
+        # Support both int (corpse) and float (phantom)
+        if isinstance(left, (int, float)) and isinstance(right, (int, float)):
+            if right == 0:
+                raise ReaperZeroDivisionError(
+                    "Division by zero",
+                    line, column,
+                    expression=f"{left} / {right}"
+                )
+            
+            # If either operand is float, return float; otherwise integer division
+            if isinstance(left, float) or isinstance(right, float):
+                return left / right  # Float division
+            else:
+                return left // right  # Integer division
+        else:
+            raise ReaperTypeError(
+                f"Cannot divide {type(left).__name__} and {type(right).__name__}",
+                line, column,
+                expected_type="corpse or phantom",
+                actual_type=f"{type(left).__name__} and {type(right).__name__}",
+                operation="division"
+            )
+    
+    def _modulo(self, left: Any, right: Any, line: int, column: int) -> Any:
         """Modulo two values."""
-        self._check_type(left, int, "modulo left operand", line, column)
-        self._check_type(right, int, "modulo right operand", line, column)
-        
-        if right == 0:
-            raise ReaperZeroDivisionError(
-                "Modulo by zero",
+        # Support both int (corpse) and float (phantom)
+        if isinstance(left, (int, float)) and isinstance(right, (int, float)):
+            if right == 0:
+                raise ReaperZeroDivisionError(
+                    "Modulo by zero",
+                    line, column,
+                    expression=f"{left} % {right}"
+                )
+            return left % right
+        else:
+            raise ReaperTypeError(
+                f"Cannot modulo {type(left).__name__} and {type(right).__name__}",
                 line, column,
-                expression=f"{left} % {right}"
+                expected_type="corpse or phantom",
+                actual_type=f"{type(left).__name__} and {type(right).__name__}",
+                operation="modulo"
             )
-        
-        return left % right
     
-    def _negate(self, operand: Any, line: int, column: int) -> int:
+    def _negate(self, operand: Any, line: int, column: int) -> Any:
         """Negate a value."""
-        self._check_type(operand, int, "negation operand", line, column)
-        return -operand
+        # Support both int (corpse) and float (phantom)
+        if isinstance(operand, (int, float)):
+            return -operand
+        else:
+            raise ReaperTypeError(
+                f"Cannot negate {type(operand).__name__}",
+                line, column,
+                expected_type="corpse or phantom",
+                actual_type=type(operand).__name__,
+                operation="negation"
+            )
     
     def _logical_not(self, operand: Any, line: int, column: int) -> bool:
         """Logical NOT operation."""
@@ -1919,27 +2017,59 @@ class Interpreter:
     
     def _less_than(self, left: Any, right: Any, line: int, column: int) -> bool:
         """Check if left < right."""
-        self._check_type(left, int, "less than left operand", line, column)
-        self._check_type(right, int, "less than right operand", line, column)
-        return left < right
+        # Support both int (corpse) and float (phantom)
+        if isinstance(left, (int, float)) and isinstance(right, (int, float)):
+            return left < right
+        else:
+            raise ReaperTypeError(
+                f"Cannot compare {type(left).__name__} and {type(right).__name__}",
+                line, column,
+                expected_type="corpse or phantom",
+                actual_type=f"{type(left).__name__} and {type(right).__name__}",
+                operation="comparison"
+            )
     
     def _greater_than(self, left: Any, right: Any, line: int, column: int) -> bool:
         """Check if left > right."""
-        self._check_type(left, int, "greater than left operand", line, column)
-        self._check_type(right, int, "greater than right operand", line, column)
-        return left > right
+        # Support both int (corpse) and float (phantom)
+        if isinstance(left, (int, float)) and isinstance(right, (int, float)):
+            return left > right
+        else:
+            raise ReaperTypeError(
+                f"Cannot compare {type(left).__name__} and {type(right).__name__}",
+                line, column,
+                expected_type="corpse or phantom",
+                actual_type=f"{type(left).__name__} and {type(right).__name__}",
+                operation="comparison"
+            )
     
     def _less_equal(self, left: Any, right: Any, line: int, column: int) -> bool:
         """Check if left <= right."""
-        self._check_type(left, int, "less equal left operand", line, column)
-        self._check_type(right, int, "less equal right operand", line, column)
-        return left <= right
+        # Support both int (corpse) and float (phantom)
+        if isinstance(left, (int, float)) and isinstance(right, (int, float)):
+            return left <= right
+        else:
+            raise ReaperTypeError(
+                f"Cannot compare {type(left).__name__} and {type(right).__name__}",
+                line, column,
+                expected_type="corpse or phantom",
+                actual_type=f"{type(left).__name__} and {type(right).__name__}",
+                operation="comparison"
+            )
     
     def _greater_equal(self, left: Any, right: Any, line: int, column: int) -> bool:
         """Check if left >= right."""
-        self._check_type(left, int, "greater equal left operand", line, column)
-        self._check_type(right, int, "greater equal right operand", line, column)
-        return left >= right
+        # Support both int (corpse) and float (phantom)
+        if isinstance(left, (int, float)) and isinstance(right, (int, float)):
+            return left >= right
+        else:
+            raise ReaperTypeError(
+                f"Cannot compare {type(left).__name__} and {type(right).__name__}",
+                line, column,
+                expected_type="corpse or phantom",
+                actual_type=f"{type(left).__name__} and {type(right).__name__}",
+                operation="comparison"
+            )
     
     def _bitwise_or(self, left: Any, right: Any, line: int, column: int) -> int:
         """Bitwise OR operation (spread)."""

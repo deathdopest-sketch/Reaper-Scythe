@@ -772,7 +772,11 @@ class Parser:
         """Parse primary expression."""
         if self._match(TokenType.NUMBER):
             token = self._previous()
-            return NumberNode(token.value, token.line, token.column, token.filename)
+            # Check if it's a float or int
+            if isinstance(token.value, float):
+                return PhantomLiteralNode(token.value, token.line, token.column, token.filename)
+            else:
+                return NumberNode(token.value, token.line, token.column, token.filename)
         
         elif self._match(TokenType.HEX_LITERAL):
             token = self._previous()

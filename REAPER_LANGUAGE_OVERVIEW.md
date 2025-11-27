@@ -60,10 +60,10 @@
 
 ## 🔢 Type System
 
-REAPER has **7 fundamental types**:
+REAPER has **8 fundamental types**:
 
 ### 1. `corpse` (Integer)
-- **Purpose**: Whole numbers only (no floating-point)
+- **Purpose**: Whole numbers only
 - **Range**: Limited by Python's int (effectively unlimited)
 - **Operations**: All arithmetic, comparison, logical (as 0/1)
 - **Examples**: 
@@ -71,6 +71,17 @@ REAPER has **7 fundamental types**:
   corpse zombies = 10;
   corpse health = -5;
   corpse count = 0;
+  ```
+
+### 1.5. `phantom` (Floating-Point) ⭐ NEW in v0.3.0
+- **Purpose**: Decimal numbers for precise calculations
+- **Range**: Limited by Python's float (IEEE 754 double precision)
+- **Operations**: All arithmetic, comparison
+- **Examples**: 
+  ```reaper
+  phantom pi = 3.14159;
+  phantom rate = 0.05;
+  phantom temperature = -273.15;
   ```
 
 ### 2. `soul` (String)
@@ -549,9 +560,15 @@ final_rest(0);  # Exit with code 0
 soul num_str = "42";
 corpse num = raise_corpse(num_str);  # 42
 
-# Integer to string
+# String to float
+soul float_str = "3.14";
+phantom pi = raise_phantom(float_str);  # 3.14
+
+# Integer/float to string
 corpse count = 100;
 soul str_count = steal_soul(count);  # "100"
+phantom rate = 0.05;
+soul str_rate = steal_soul(rate);  # "0.05"
 ```
 
 ### Utility Functions

@@ -152,11 +152,12 @@ python test_runner.py
 - `harvest(...)` - Print variadic arguments
 - `rest(ms)` - Sleep for milliseconds
 - `raise_corpse(soul)` - Convert string to integer
-- `steal_soul(corpse)` - Convert integer to string
+- `raise_phantom(soul)` - Convert string to float ⭐ NEW
+- `steal_soul(corpse|phantom)` - Convert integer/float to string
 - `summon()` - Read line from stdin
 - `final_rest(code)` - Exit program with code
 - `curse(condition, message)` - Assert condition
-- `absolute(corpse)` - Absolute value
+- `absolute(corpse|phantom)` - Absolute value
 - `lesser(a, b)` - Minimum of two values
 - `greater(a, b)` - Maximum of two values
 
