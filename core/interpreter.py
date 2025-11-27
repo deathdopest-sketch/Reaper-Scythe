@@ -1449,7 +1449,8 @@ class Interpreter:
         """Call function by name."""
         # Check if it's a built-in function
         if name in ["harvest", "rest", "raise_corpse", "steal_soul", "summon", 
-                   "final_rest", "curse", "absolute", "lesser", "greater"]:
+                   "final_rest", "curse", "absolute", "lesser", "greater",
+                   "raise_phantom", "excavate", "bury"]:
             return self._call_builtin_function(name, arguments, line, column)
         
         # Get function from environment

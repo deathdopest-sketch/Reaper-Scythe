@@ -132,6 +132,8 @@ class ReaperVM:
             "risen": self._builtin_risen,
             "dead": self._builtin_dead,
             "void": self._builtin_void,
+            "excavate": self._builtin_excavate,
+            "bury": self._builtin_bury,
         }
     
     def load_program(self, program: BytecodeProgram) -> None:
@@ -418,8 +420,62 @@ class ReaperVM:
                 if func_name not in self.builtins:
                     raise ReaperRuntimeError(f"Built-in function '{func_name}' not found")
                 
-                # Call built-in function (no arguments for now)
-                result = self.builtins[func_name]()
+                # Get function and determine argument count
+                func = self.builtins[func_name]
+                
+                # Determine number of arguments based on function name
+                # This is a simple approach - in a more sophisticated system, we'd store arity
+                arg_counts = {
+                    'harvest': 1,  # Can take variable args, but we'll handle 1 at a time
+                    'curse': 1,
+                    'haunt': 2,
+                    'infect': 0,  # input() - no args
+                    'raise': 0,  # random() - no args
+                    'reap': 0,  # Returns top of stack
+                    'flee': 0,
+                    'persist': 0,
+                    'rest': 1,
+                    'lesser': 2,
+                    'greater': 2,
+                    'risen': 0,
+                    'dead': 0,
+                    'void': 0,
+                    'excavate': 1,
+                    'bury': 2,
+                    'raise_corpse': 1,
+                    'raise_phantom': 1,
+                    'steal_soul': 1,
+                    'absolute': 1,
+                    'summon': 0,
+                    'final_rest': 1,
+                }
+                
+                arg_count = arg_counts.get(func_name, 0)
+                
+                # Pop arguments from stack
+                # Arguments are pushed in reverse order, so popping gives us correct order
+                args = []
+                for _ in range(arg_count):
+                    if self.stack.size() == 0:
+                        raise ReaperRuntimeError(
+                            f"Built-in function '{func_name}' requires {arg_count} arguments, but stack is empty"
+                        )
+                    args.append(self.stack.pop())
+                
+                # Reverse args because they were pushed in reverse order
+                args.reverse()
+                
+                # Call the function
+                if arg_count == 0:
+                    result = func()
+                elif arg_count == 1:
+                    result = func(args[0])
+                elif arg_count == 2:
+                    result = func(args[0], args[1])
+                else:
+                    result = func(*args)
+                
+                # Push result (always push, even if None, so caller can decide what to do)
                 self.stack.push(result)
                 
             elif opcode == OpCode.STORE_LOCAL:
@@ -701,11 +757,14 @@ class ReaperVM:
         return not bool(a)
     
     # Built-in functions
-    def _builtin_harvest(self) -> None:
+    def _builtin_harvest(self, value: Any = None) -> None:
         """Built-in harvest function (print)."""
-        if self.stack.size() > 0:
-            value = self.stack.pop()
-            print(value)
+        if value is None:
+            if self.stack.size() > 0:
+                value = self.stack.pop()
+            else:
+                return None
+        print(value)
         return None
     
     def _builtin_curse(self) -> Any:
@@ -794,4 +853,80 @@ class ReaperVM:
     
     def _builtin_void(self) -> None:
         """Built-in void function (None)."""
+        return None
+    
+    def _builtin_excavate(self, file_path: str) -> str:
+        """Built-in excavate function (read file)."""
+        from pathlib import Path
+        
+        if not isinstance(file_path, str):
+            raise ReaperTypeError(f"excavate() requires string file path, got {type(file_path).__name__}")
+        
+        path = Path(file_path)
+        
+        # Prevent directory traversal attacks
+        if not path.is_absolute():
+            path = Path.cwd() / path
+            path = path.resolve()
+        
+        # Check if file exists
+        if not path.exists():
+            raise ReaperRuntimeError(f"File not found: {file_path}")
+        
+        # Check if it's a file (not a directory)
+        if not path.is_file():
+            raise ReaperRuntimeError(f"Path is not a file: {file_path}")
+        
+        # Check file size (prevent reading huge files)
+        file_size = path.stat().st_size
+        max_file_size = 10 * 1024 * 1024  # 10MB limit
+        if file_size > max_file_size:
+            raise ReaperMemoryError(f"File too large: {file_size} bytes (max {max_file_size})")
+        
+        # Read file
+        try:
+            with open(path, 'r', encoding='utf-8', errors='replace') as f:
+                content = f.read()
+            return content
+        except PermissionError:
+            raise ReaperRuntimeError(f"Permission denied: {file_path}")
+        except Exception as e:
+            raise ReaperRuntimeError(f"Error reading file '{file_path}': {str(e)}")
+    
+    def _builtin_bury(self, file_path: str, content: str) -> None:
+        """Built-in bury function (write file)."""
+        from pathlib import Path
+        
+        if not isinstance(file_path, str):
+            raise ReaperTypeError(f"bury() requires string file path, got {type(file_path).__name__}")
+        if not isinstance(content, str):
+            raise ReaperTypeError(f"bury() requires string content, got {type(content).__name__}")
+        
+        path = Path(file_path)
+        
+        # Prevent directory traversal attacks
+        if not path.is_absolute():
+            path = Path.cwd() / path
+            path = path.resolve()
+        
+        # Check if parent directory exists
+        parent_dir = path.parent
+        if not parent_dir.exists():
+            raise ReaperRuntimeError(f"Parent directory does not exist: {parent_dir}")
+        
+        # Check content size (prevent writing huge files)
+        content_size = len(content.encode('utf-8'))
+        max_content_size = 10 * 1024 * 1024  # 10MB limit
+        if content_size > max_content_size:
+            raise ReaperMemoryError(f"Content too large: {content_size} bytes (max {max_content_size})")
+        
+        # Write file
+        try:
+            with open(path, 'w', encoding='utf-8') as f:
+                f.write(content)
+        except PermissionError:
+            raise ReaperRuntimeError(f"Permission denied: {file_path}")
+        except Exception as e:
+            raise ReaperRuntimeError(f"Error writing file '{file_path}': {str(e)}")
+        
         return None

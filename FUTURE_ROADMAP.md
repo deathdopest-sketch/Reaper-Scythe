@@ -1,6 +1,6 @@
 # REAPER Language - Future Development Roadmap
 
-**Current Version**: 0.5.0  
+**Current Version**: 0.6.0  
 **Last Updated**: 2025-01-27
 
 ---
@@ -90,10 +90,10 @@
 
 ---
 
-#### Priority 5: File I/O Operations
-**Status**: 🔄 Not implemented  
+#### Priority 5: File I/O Operations ✅
+**Status**: ✅ **COMPLETE**  
 **Impact**: High - Essential for security tools  
-**Effort**: Medium (6-8 hours)
+**Effort**: Completed (2 hours)
 
 **Requirements:**
 - `excavate` function (read file)

@@ -46,7 +46,8 @@ class Environment:
         builtin_functions = [
             "harvest", "rest", "raise_corpse", "steal_soul", 
             "summon", "final_rest", "curse", "absolute", 
-            "lesser", "greater", "ritual_args"
+            "lesser", "greater", "ritual_args", "raise_phantom",
+            "excavate", "bury"
         ]
         
         for func_name in builtin_functions:

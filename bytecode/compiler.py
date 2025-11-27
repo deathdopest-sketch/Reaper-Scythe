@@ -366,7 +366,8 @@ class BytecodeCompiler:
         # Check if built-in function
         builtin_functions = ['harvest', 'curse', 'haunt', 'infect', 'raise', 'reap', 
                            'flee', 'persist', 'rest', 'lesser', 'greater', 'risen', 'dead', 'void',
-                           'summon', 'final_rest', 'absolute', 'raise_corpse', 'steal_soul']
+                           'summon', 'final_rest', 'absolute', 'raise_corpse', 'steal_soul', 
+                           'raise_phantom', 'excavate', 'bury']
         if node.function_name in builtin_functions:
             self.program.add_instruction(BytecodeInstruction(OpCode.CALL_BUILTIN, node.function_name))
         else:
