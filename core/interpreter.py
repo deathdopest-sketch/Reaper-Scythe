@@ -1349,7 +1349,7 @@ class Interpreter:
         # Evaluate exception message if provided
         message = "Exception raised"
         if node.exception_message:
-            message_value = self._evaluate(node.exception_message)
+            message_value = self._execute(node.exception_message)
             if isinstance(message_value, str):
                 message = message_value
             else:
