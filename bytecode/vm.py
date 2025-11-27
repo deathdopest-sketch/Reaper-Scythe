@@ -325,51 +325,91 @@ class ReaperVM:
                     self.pc = operand - 1  # -1 because pc will be incremented
                 
             elif opcode == OpCode.CALL:
-                # Pop function from stack (pushed by PUSH_GLOBAL)
-                if self.stack.is_empty():
-                    raise ReaperRuntimeError("CALL: Stack empty, no function to call")
+                # Get function name from operand
+                if not operand or not isinstance(operand, str):
+                    raise ReaperRuntimeError("CALL requires function name as operand")
                 
-                func = self.stack.pop()
+                func_name = operand
                 
-                # If operand is provided and is a string, it's a function name
-                # Otherwise, func should be the function object
-                if operand and isinstance(operand, str):
-                    func_name = operand
-                    if func_name not in self.globals:
-                        raise ReaperRuntimeError(f"Function '{func_name}' not found")
+                # Check if it's a bytecode function
+                if func_name in self.program.functions:
+                    # Bytecode function - get metadata
+                    func_start = self.program.functions[func_name]
+                    func_metadata = self.program.function_metadata.get(func_name, {})
+                    param_names = func_metadata.get('param_names', [])
+                    param_count = func_metadata.get('param_count', 0)
+                    
+                    # Check call stack size
+                    if len(self.call_stack) >= self.max_call_stack_size:
+                        raise ReaperMemoryError(f"Call stack overflow: maximum depth {self.max_call_stack_size} exceeded")
+                    
+                    # Pop arguments from stack (they were pushed in reverse order)
+                    # So we need to reverse them to get correct order
+                    args = []
+                    for _ in range(param_count):
+                        if self.stack.size() == 0:
+                            raise ReaperRuntimeError(f"Function '{func_name}' requires {param_count} arguments, but stack is empty")
+                        args.insert(0, self.stack.pop())  # Insert at beginning to reverse order
+                    
+                    # Create new frame with return address
+                    return_address = self.pc + 1  # Return to next instruction
+                    frame = VMFrame(return_address, {})
+                    
+                    # Set up local variables for parameters
+                    for i, param_name in enumerate(param_names):
+                        if i < len(args):
+                            frame.locals[param_name] = args[i]
+                        else:
+                            # Missing argument - will be handled by default values if any
+                            # For now, set to None
+                            frame.locals[param_name] = None
+                    
+                    # Push frame onto call stack
+                    self.call_stack.append(frame)
+                    
+                    # Jump to function start
+                    self.pc = func_start - 1  # -1 because pc will be incremented
+                    
+                elif func_name in self.globals:
+                    # Check if it's a built-in function marker
                     func = self.globals[func_name]
-                
-                # Handle function call
-                # For now, user-defined functions need interpreter support
-                # This is a limitation - full bytecode function support requires more work
-                if isinstance(func, str) and func.startswith("<builtin:"):
-                    # Built-in function marker
-                    builtin_name = func[9:-1]  # Extract name from "<builtin:name>"
-                    if builtin_name in self.builtins:
-                        # Pop arguments from stack (they were pushed in reverse order)
-                        # For now, assume no arguments
-                        result = self.builtins[builtin_name]()
-                        self.stack.push(result)
-                elif hasattr(func, '__call__') or (isinstance(func, type) and hasattr(func, 'name')):
-                    # Try to handle function-like objects
-                    # For InfectNode (user-defined functions), we'd need interpreter integration
-                    # This is a known limitation - use interpreter mode for user-defined functions
-                    raise ReaperRuntimeError(
-                        f"Bytecode VM: User-defined function calls require interpreter mode. "
-                        f"Run without --bytecode flag to use the interpreter."
-                    )
+                    if isinstance(func, str) and func.startswith("<builtin:"):
+                        builtin_name = func[9:-1]  # Extract name from "<builtin:name>"
+                        if builtin_name in self.builtins:
+                            # Built-in function - pop arguments (assume no args for now)
+                            result = self.builtins[builtin_name]()
+                            self.stack.push(result)
+                        else:
+                            raise ReaperRuntimeError(f"Built-in function '{builtin_name}' not found")
+                    else:
+                        raise ReaperRuntimeError(
+                            f"Function '{func_name}' is not a bytecode function. "
+                            f"User-defined functions must be compiled to bytecode."
+                        )
                 else:
-                    # Unknown function type
-                    raise ReaperRuntimeError(
-                        f"CALL: Cannot call object of type {type(func).__name__}"
-                    )
+                    raise ReaperRuntimeError(f"Function '{func_name}' not found")
                 
             elif opcode == OpCode.RETURN:
                 if not self.call_stack:
-                    raise ReaperRuntimeError("Return without active function")
+                    # Return from main program - end execution
+                    self.pc = len(self.program.instructions)
+                    return
                 
+                # Pop return value if present (top of stack)
+                return_value = None
+                if self.stack.size() > 0:
+                    return_value = self.stack.pop()
+                
+                # Pop frame and restore PC
                 frame = self.call_stack.pop()
                 self.pc = frame.return_address - 1  # -1 because pc will be incremented
+                
+                # Push return value back onto stack for caller
+                if return_value is not None:
+                    self.stack.push(return_value)
+                else:
+                    # Implicit return None
+                    self.stack.push(None)
                 
             elif opcode == OpCode.CALL_BUILTIN:
                 if operand is None:

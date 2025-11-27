@@ -6,9 +6,9 @@ Centralized version information for the Reaper standalone hacking language.
 Used by build system, packaging, and runtime to display version information.
 """
 
-__version__ = "0.2.0"
-__version_info__ = (0, 2, 0)
-__release_date__ = "2025-10-29"
+__version__ = "0.3.0"
+__version_info__ = (0, 3, 0)
+__release_date__ = "2025-01-27"
 __build_number__ = None  # Set during build process
 
 def get_version():

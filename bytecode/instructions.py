@@ -196,6 +196,7 @@ class BytecodeProgram:
         self.instructions: List[BytecodeInstruction] = []
         self.constants: List[Any] = []
         self.functions: Dict[str, int] = {}  # Function name -> instruction index
+        self.function_metadata: Dict[str, Dict[str, Any]] = {}  # Function name -> {param_names, param_count}
         self.globals: Dict[str, Any] = {}
     
     def add_instruction(self, instruction: BytecodeInstruction) -> int:
@@ -208,9 +209,13 @@ class BytecodeProgram:
         self.constants.append(value)
         return len(self.constants) - 1
     
-    def add_function(self, name: str, start_index: int):
-        """Add function entry point."""
+    def add_function(self, name: str, start_index: int, param_names: Optional[List[str]] = None):
+        """Add function entry point with metadata."""
         self.functions[name] = start_index
+        self.function_metadata[name] = {
+            'param_names': param_names or [],
+            'param_count': len(param_names) if param_names else 0
+        }
     
     def to_bytes(self) -> bytes:
         """Convert program to byte representation."""

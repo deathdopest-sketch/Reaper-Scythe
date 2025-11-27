@@ -138,6 +138,8 @@ class BytecodeCompiler:
             self._compile_variable(node)
         elif isinstance(node, BinaryOpNode):
             self._compile_binary_op(node)
+        elif isinstance(node, ComparisonNode):
+            self._compile_comparison(node)
         elif isinstance(node, UnaryOpNode):
             self._compile_unary_op(node)
         elif isinstance(node, CallNode):
@@ -316,6 +318,27 @@ class BytecodeCompiler:
         else:
             raise ReaperRuntimeError(f"Unknown binary operator: {node.operator}")
     
+    def _compile_comparison(self, node: ComparisonNode) -> None:
+        """Compile comparison operation."""
+        # Compile left and right operands
+        self._compile_expression(node.left)
+        self._compile_expression(node.right)
+        
+        # Map operator to opcode
+        opcode_map = {
+            '==': OpCode.EQ,
+            '!=': OpCode.NE,
+            '<': OpCode.LT,
+            '<=': OpCode.LE,
+            '>': OpCode.GT,
+            '>=': OpCode.GE,
+        }
+        
+        if node.operator in opcode_map:
+            self.program.add_instruction(BytecodeInstruction(opcode_map[node.operator]))
+        else:
+            raise ReaperRuntimeError(f"Unknown comparison operator: {node.operator}")
+    
     def _compile_unary_op(self, node: UnaryOpNode) -> None:
         """Compile unary operation."""
         # Compile operand
@@ -347,8 +370,8 @@ class BytecodeCompiler:
         if node.function_name in builtin_functions:
             self.program.add_instruction(BytecodeInstruction(OpCode.CALL_BUILTIN, node.function_name))
         else:
-            # User-defined function - push function name and call
-            self.program.add_instruction(BytecodeInstruction(OpCode.PUSH_GLOBAL, node.function_name))
+            # User-defined function - call directly with function name
+            # Arguments are already on the stack (pushed in reverse order)
             self.program.add_instruction(BytecodeInstruction(OpCode.CALL, node.function_name))
     
     def _compile_method_call(self, node: MethodCallNode) -> None:
@@ -407,8 +430,8 @@ class BytecodeCompiler:
         # Jump to else if condition is false
         self.program.add_instruction(BytecodeInstruction(OpCode.JMP_IF_NOT, else_label))
         
-        # Compile then block
-        self._compile_block(node.then_block)
+        # Compile if body
+        self._compile_statement(node.if_body)
         
         # Jump to end
         self.program.add_instruction(BytecodeInstruction(OpCode.JMP, end_label))
@@ -416,9 +439,9 @@ class BytecodeCompiler:
         # Set else label
         self._set_label(else_label)
         
-        # Compile else block if exists
-        if node.else_block:
-            self._compile_block(node.else_block)
+        # Compile else body if exists
+        if node.else_body:
+            self._compile_statement(node.else_body)
         
         # Set end label
         self._set_label(end_label)
@@ -528,25 +551,45 @@ class BytecodeCompiler:
     
     def _compile_infect_function(self, node: InfectNode) -> None:
         """Compile infect function definition."""
-        # Record function start
-        func_start = len(self.program.instructions)
-        self.program.add_function(node.name, func_start)
+        # If we're in the main program (not nested in another function),
+        # we need to skip over the function body during main execution
+        # Store the jump instruction index so we can fix it later
+        skip_jmp_index = None
+        if not self.current_function:
+            # In main program - jump over function body
+            # We'll set the target after compiling the body
+            skip_jmp_index = len(self.program.instructions)
+            self.program.add_instruction(BytecodeInstruction(OpCode.JMP, 0))  # Placeholder
         
-        # Set current function
+        # Record function start (AFTER the skip JMP if we added one)
+        func_start = len(self.program.instructions)
+        
+        # Extract parameter names
+        param_names = [param[0] for param in node.params]
+        
+        # Register function with metadata
+        self.program.add_function(node.name, func_start, param_names)
+        
+        # Set current function context
         old_function = self.current_function
         self.current_function = node.name
         self.function_stack.append(node.name)
         
-        # Create function frame
-        self.program.add_instruction(BytecodeInstruction(OpCode.CALL, func_start))
-        
         # Compile function body
+        # Parameters will be stored as locals when the function is called
         self._compile_block(node.body)
         
-        # Add return if no explicit return
+        # Add implicit return if function doesn't end with explicit return
+        # (We check if the last instruction is RETURN, but for simplicity, we always add one)
+        # The VM will handle this correctly
         self.program.add_instruction(BytecodeInstruction(OpCode.RETURN))
         
-        # Restore current function
+        # Fix the jump target if we added one
+        if skip_jmp_index is not None:
+            skip_target = len(self.program.instructions)
+            self.program.instructions[skip_jmp_index].operand = skip_target
+        
+        # Restore current function context
         self.current_function = old_function
         if self.function_stack:
             self.function_stack.pop()
