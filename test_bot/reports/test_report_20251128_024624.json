@@ -1,0 +1,126 @@
+{
+  "total_tests": 9,
+  "passed": 3,
+  "failed": 6,
+  "skipped": 0,
+  "errors": 0,
+  "duration": 0.13299918174743652,
+  "results": [
+    {
+      "test_name": "Exception Handling - risk/catch/finally",
+      "category": "Core Language",
+      "status": "FAIL",
+      "duration": 0.01474142074584961,
+      "message": "type object 'TokenType' has no attribute 'AWAIT'",
+      "details": {
+        "success": false,
+        "message": "type object 'TokenType' has no attribute 'AWAIT'",
+        "error": "Traceback (most recent call last):\n  File \"C:\\Users\\Death\\Desktop\\Reaper code language\\test_bot\\e2e_test_bot.py\", line 246, in _test_exception_handling\n    from core.lexer import Lexer\n  File \"C:\\Users\\Death\\Desktop\\Reaper code language\\core\\__init__.py\", line 8, in <module>\n    from .lexer import tokenize\n  File \"C:\\Users\\Death\\Desktop\\Reaper code language\\core\\lexer.py\", line 10, in <module>\n    from .tokens import (\n  File \"C:\\Users\\Death\\Desktop\\Reaper code language\\core\\tokens.py\", line 206, in <module>\n    \"await\": TokenType.AWAIT,            # Await async operation\n             ^^^^^^^^^^^^^^^\nAttributeError: type object 'TokenType' has no attribute 'AWAIT'\n"
+      },
+      "timestamp": "2025-11-28T02:46:24.228382"
+    },
+    {
+      "test_name": "Module Import System",
+      "category": "Core Language",
+      "status": "FAIL",
+      "duration": 0.003515958786010742,
+      "message": "type object 'TokenType' has no attribute 'AWAIT'",
+      "details": {
+        "success": false,
+        "message": "type object 'TokenType' has no attribute 'AWAIT'"
+      },
+      "timestamp": "2025-11-28T02:46:24.231898"
+    },
+    {
+      "test_name": "File I/O Operations",
+      "category": "Core Language",
+      "status": "FAIL",
+      "duration": 0.004772663116455078,
+      "message": "type object 'TokenType' has no attribute 'AWAIT'",
+      "details": {
+        "success": false,
+        "message": "type object 'TokenType' has no attribute 'AWAIT'",
+        "error": "Traceback (most recent call last):\n  File \"C:\\Users\\Death\\Desktop\\Reaper code language\\test_bot\\e2e_test_bot.py\", line 382, in _test_file_io\n    from core.interpreter import Interpreter\n  File \"C:\\Users\\Death\\Desktop\\Reaper code language\\core\\__init__.py\", line 8, in <module>\n    from .lexer import tokenize\n  File \"C:\\Users\\Death\\Desktop\\Reaper code language\\core\\lexer.py\", line 10, in <module>\n    from .tokens import (\n  File \"C:\\Users\\Death\\Desktop\\Reaper code language\\core\\tokens.py\", line 206, in <module>\n    \"await\": TokenType.AWAIT,            # Await async operation\n             ^^^^^^^^^^^^^^^\nAttributeError: type object 'TokenType' has no attribute 'AWAIT'\n"
+      },
+      "timestamp": "2025-11-28T02:46:24.237672"
+    },
+    {
+      "test_name": "Async/Concurrent Operations",
+      "category": "Core Language",
+      "status": "FAIL",
+      "duration": 0.004031181335449219,
+      "message": "type object 'TokenType' has no attribute 'AWAIT'",
+      "details": {
+        "success": false,
+        "message": "type object 'TokenType' has no attribute 'AWAIT'"
+      },
+      "timestamp": "2025-11-28T02:46:24.241703"
+    },
+    {
+      "test_name": "Exploit Development Library",
+      "category": "Security Libraries",
+      "status": "PASS",
+      "duration": 0.028809785842895508,
+      "message": "Test passed",
+      "details": {
+        "success": true,
+        "message": "Exploit library works",
+        "shellcode_size": 7,
+        "pattern_size": 100,
+        "examples_shown": 1
+      },
+      "timestamp": "2025-11-28T02:46:24.270513"
+    },
+    {
+      "test_name": "Binary Analysis Library",
+      "category": "Security Libraries",
+      "status": "FAIL",
+      "duration": 0.014316320419311523,
+      "message": "name 'Any' is not defined",
+      "details": {
+        "success": false,
+        "message": "name 'Any' is not defined"
+      },
+      "timestamp": "2025-11-28T02:46:24.284829"
+    },
+    {
+      "test_name": "Memory Manipulation Library",
+      "category": "Security Libraries",
+      "status": "PASS",
+      "duration": 0.02575540542602539,
+      "message": "Test passed",
+      "details": {
+        "success": true,
+        "message": "Memory library initialized",
+        "platform": "win32"
+      },
+      "timestamp": "2025-11-28T02:46:24.310585"
+    },
+    {
+      "test_name": "Fuzzing Framework",
+      "category": "Security Libraries",
+      "status": "FAIL",
+      "duration": 0.019234895706176758,
+      "message": "name 'Any' is not defined",
+      "details": {
+        "success": false,
+        "message": "name 'Any' is not defined"
+      },
+      "timestamp": "2025-11-28T02:46:24.329819"
+    },
+    {
+      "test_name": "Reverse Engineering Library",
+      "category": "Security Libraries",
+      "status": "PASS",
+      "duration": 0.016820669174194336,
+      "message": "Test passed",
+      "details": {
+        "success": true,
+        "message": "Reverse library works",
+        "patterns_loaded": 5
+      },
+      "timestamp": "2025-11-28T02:46:24.346640"
+    }
+  ],
+  "timestamp": "2025-11-28T02:46:24.346640"
+}

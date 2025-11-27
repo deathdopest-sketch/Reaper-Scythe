@@ -1,0 +1,140 @@
+{
+  "total_tests": 9,
+  "passed": 5,
+  "failed": 4,
+  "skipped": 0,
+  "errors": 0,
+  "duration": 0.2582406997680664,
+  "results": [
+    {
+      "test_name": "Exception Handling - risk/catch/finally",
+      "category": "Core Language",
+      "status": "FAIL",
+      "duration": 0.10397696495056152,
+      "message": "object of type 'Lexer' has no len()",
+      "details": {
+        "success": false,
+        "message": "object of type 'Lexer' has no len()",
+        "error": "Traceback (most recent call last):\n  File \"C:\\Users\\Death\\Desktop\\Reaper code language\\test_bot\\e2e_test_bot.py\", line 270, in _test_exception_handling\n    program = parser.parse()\n              ^^^^^^^^^^^^^^\n  File \"C:\\Users\\Death\\Desktop\\Reaper code language\\core\\parser.py\", line 51, in parse\n    while not self._is_at_end():\n              ^^^^^^^^^^^^^^^^^\n  File \"C:\\Users\\Death\\Desktop\\Reaper code language\\core\\parser.py\", line 77, in _is_at_end\n    return self._peek().type == TokenType.EOF\n           ^^^^^^^^^^^^\n  File \"C:\\Users\\Death\\Desktop\\Reaper code language\\core\\parser.py\", line 81, in _peek\n    if self.current >= len(self.tokens):\n                       ^^^^^^^^^^^^^^^^\nTypeError: object of type 'Lexer' has no len()\n"
+      },
+      "timestamp": "2025-11-28T02:46:45.638221"
+    },
+    {
+      "test_name": "Module Import System",
+      "category": "Core Language",
+      "status": "PASS",
+      "duration": 0.029438257217407227,
+      "message": "Test passed",
+      "details": {
+        "success": true,
+        "message": "Module loading works",
+        "modules": [
+          "DNSConfig",
+          "DNSQueryClass",
+          "DNSRecord",
+          "DNSRecordType",
+          "PacketConfig",
+          "PhantomDNS",
+          "PhantomPacket",
+          "PhantomScanner",
+          "PortResult",
+          "Protocol"
+        ],
+        "examples_shown": 3
+      },
+      "timestamp": "2025-11-28T02:46:45.667659"
+    },
+    {
+      "test_name": "File I/O Operations",
+      "category": "Core Language",
+      "status": "FAIL",
+      "duration": 0.0010197162628173828,
+      "message": "object of type 'Lexer' has no len()",
+      "details": {
+        "success": false,
+        "message": "object of type 'Lexer' has no len()",
+        "error": "Traceback (most recent call last):\n  File \"C:\\Users\\Death\\Desktop\\Reaper code language\\test_bot\\e2e_test_bot.py\", line 406, in _test_file_io\n    program1 = parser1.parse()\n               ^^^^^^^^^^^^^^^\n  File \"C:\\Users\\Death\\Desktop\\Reaper code language\\core\\parser.py\", line 51, in parse\n    while not self._is_at_end():\n              ^^^^^^^^^^^^^^^^^\n  File \"C:\\Users\\Death\\Desktop\\Reaper code language\\core\\parser.py\", line 77, in _is_at_end\n    return self._peek().type == TokenType.EOF\n           ^^^^^^^^^^^^\n  File \"C:\\Users\\Death\\Desktop\\Reaper code language\\core\\parser.py\", line 81, in _peek\n    if self.current >= len(self.tokens):\n                       ^^^^^^^^^^^^^^^^\nTypeError: object of type 'Lexer' has no len()\n"
+      },
+      "timestamp": "2025-11-28T02:46:45.668679"
+    },
+    {
+      "test_name": "Async/Concurrent Operations",
+      "category": "Core Language",
+      "status": "PASS",
+      "duration": 0.10136771202087402,
+      "message": "Test passed",
+      "details": {
+        "success": true,
+        "message": "Async runtime works",
+        "examples_shown": 2
+      },
+      "timestamp": "2025-11-28T02:46:45.770046"
+    },
+    {
+      "test_name": "Exploit Development Library",
+      "category": "Security Libraries",
+      "status": "PASS",
+      "duration": 0.005625724792480469,
+      "message": "Test passed",
+      "details": {
+        "success": true,
+        "message": "Exploit library works",
+        "shellcode_size": 7,
+        "pattern_size": 100,
+        "examples_shown": 1
+      },
+      "timestamp": "2025-11-28T02:46:45.775672"
+    },
+    {
+      "test_name": "Binary Analysis Library",
+      "category": "Security Libraries",
+      "status": "FAIL",
+      "duration": 0.005102872848510742,
+      "message": "name 'Any' is not defined",
+      "details": {
+        "success": false,
+        "message": "name 'Any' is not defined"
+      },
+      "timestamp": "2025-11-28T02:46:45.780775"
+    },
+    {
+      "test_name": "Memory Manipulation Library",
+      "category": "Security Libraries",
+      "status": "PASS",
+      "duration": 0.008114337921142578,
+      "message": "Test passed",
+      "details": {
+        "success": true,
+        "message": "Memory library initialized",
+        "platform": "win32"
+      },
+      "timestamp": "2025-11-28T02:46:45.788889"
+    },
+    {
+      "test_name": "Fuzzing Framework",
+      "category": "Security Libraries",
+      "status": "FAIL",
+      "duration": 0.0015201568603515625,
+      "message": "name 'Any' is not defined",
+      "details": {
+        "success": false,
+        "message": "name 'Any' is not defined"
+      },
+      "timestamp": "2025-11-28T02:46:45.790409"
+    },
+    {
+      "test_name": "Reverse Engineering Library",
+      "category": "Security Libraries",
+      "status": "PASS",
+      "duration": 0.001569986343383789,
+      "message": "Test passed",
+      "details": {
+        "success": true,
+        "message": "Reverse library works",
+        "patterns_loaded": 5
+      },
+      "timestamp": "2025-11-28T02:46:45.792484"
+    }
+  ],
+  "timestamp": "2025-11-28T02:46:45.792484"
+}

@@ -1,0 +1,5 @@
+# ERROR: Division by zero
+
+corpse x = 10;
+corpse y = 0;
+harvest x / y;

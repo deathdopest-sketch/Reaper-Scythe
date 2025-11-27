@@ -1,0 +1,7 @@
+# EXPECT: Hello from the graveyard, mortal
+
+infect Greet(soul name) {
+    harvest "Hello from the graveyard, " + name;
+}
+
+raise Greet("mortal");

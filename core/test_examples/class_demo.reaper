@@ -1,0 +1,26 @@
+# EXPECT: 150
+# EXPECT: 140
+# EXPECT: RISEN
+
+tomb Zombie {
+    corpse health = 100;
+    soul moan = "Braaaaains";
+    
+    infect Zombie(corpse initial_health = 100) {
+        this.health = initial_health;
+    }
+    
+    infect Attack() {
+        this.health = this.health - 10;
+    }
+    
+    infect IsAlive() -> wraith {
+        reap this.health > DEAD;
+    }
+}
+
+tomb zombie = spawn Zombie(150);
+harvest zombie.health;
+zombie.Attack();
+harvest zombie.health;
+harvest zombie.IsAlive();

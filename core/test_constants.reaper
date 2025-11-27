@@ -1,0 +1,6 @@
+harvest DEAD;
+harvest RISEN;
+corpse x = DEAD;
+corpse y = RISEN;
+harvest x;
+harvest y;

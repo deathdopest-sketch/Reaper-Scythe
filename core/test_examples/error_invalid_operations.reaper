@@ -1,0 +1,4 @@
+# ERROR: Invalid operation
+
+corpse x = 5;
+harvest x.Attack();

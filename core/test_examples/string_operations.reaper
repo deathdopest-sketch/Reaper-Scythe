@@ -1,0 +1,18 @@
+# EXPECT: 11
+# EXPECT: o
+# EXPECT: ello
+# EXPECT: HELLO WORLD
+# EXPECT: hello world
+# EXPECT: RISEN
+# EXPECT: 2
+
+soul message = "Hello World";
+
+# Test string methods
+harvest message.curse();
+harvest message[4];
+harvest message.slice(1, 5);
+harvest message.scream();
+harvest message.whisper();
+harvest message.haunt("World");
+harvest message.split(" ").curse();

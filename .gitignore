@@ -1,0 +1,197 @@
+# REAPER Language - Git Ignore
+# Secrets, Credentials, and Sensitive Data
+
+# API Keys and Tokens
+*.key
+*.token
+*.secret
+*.pem
+*.p12
+*.pfx
+*.crt
+*.cer
+api_keys.txt
+secrets.txt
+credentials.txt
+.env
+.env.local
+.env.*.local
+*.env
+
+# Authentication
+auth.json
+auth_config.json
+*.auth
+*.credentials
+oauth_tokens.json
+tokens.json
+
+# Database files with sensitive data
+*.db
+*.sqlite
+*.sqlite3
+*.db-journal
+necronomicon.db
+progress.db
+*.db-shm
+*.db-wal
+
+# Configuration files with secrets
+config.json
+config.yaml
+config.yml
+settings.json
+*.conf
+*.config
+ai_config.yaml
+necronomicon_config.json
+
+# Private keys and certificates
+private_key*
+*.private
+*.priv
+*.key
+id_rsa
+id_rsa.pub
+id_dsa
+id_dsa.pub
+id_ecdsa
+id_ecdsa.pub
+id_ed25519
+id_ed25519.pub
+*.pem
+*.key
+*.crt
+*.cert
+*.p12
+*.pfx
+
+# Session data
+*.session
+*.cookie
+cookies.txt
+sessions/
+
+# Logs (may contain sensitive info)
+*.log
+logs/
+*.log.*
+
+# Temporary files
+*.tmp
+*.temp
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+venv/
+ENV/
+env/
+.venv
+
+# IDE
+.vscode/
+.idea/
+*.sublime-project
+*.sublime-workspace
+.project
+.pydevproject
+
+# Testing
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
+.hypothesis/
+
+# Bytecode files (optional - can be regenerated)
+*.bc
+*.reaper.bc
+
+# Build artifacts
+build/
+dist/
+*.exe
+*.dll
+*.so
+*.dylib
+
+# OS
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Desktop.ini
+
+# User-specific
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+
+# Backup files
+*.bak
+*.backup
+*.old
+*~
+
+# Security-related
+passwords.txt
+secrets/
+.secrets/
+*.secret
+*.confidential
+
+# AI Model files (large, user-specific)
+models/
+*.gguf
+*.bin
+*.safetensors
+ollama_models/
+
+# User data
+user_data/
+progress/
+*.progress
+*.history
+
+# Test output
+test_output/
+test_results/
+*.test
+
+# Documentation builds
+docs/_build/
+site/
+
+# Nuitka build
+*.build/
+*.dist/
+*.onefile-build/
+

@@ -1,0 +1,45 @@
+# Development dependencies for Reaper Standalone Hacking Language
+
+# Testing
+pytest>=6.0
+pytest-cov>=2.0
+
+# Code formatting and linting
+black>=21.0
+flake8>=3.8
+mypy>=0.800
+isort>=5.0
+
+# Documentation
+sphinx>=4.0
+sphinx-rtd-theme>=1.0
+myst-parser>=0.15
+
+# Security library dependencies (will be added as implemented)
+# Phantom (Network)
+scapy>=2.4.0
+
+# Crypt (Crypto)
+pycryptodome>=3.10.0
+cryptography>=3.4.0
+Pillow>=8.0.0
+
+# Wraith (System)
+psutil>=5.8.0
+
+# Specter (Web)
+requests>=2.25.0
+beautifulsoup4>=4.9.0
+selenium>=4.0.0
+
+# Shadow (Anonymity)
+stem>=1.8.0
+netifaces>=0.11.0
+
+# Compilation
+nuitka>=0.6.0
+pyinstaller>=4.0
+
+# Performance and profiling
+memory-profiler>=0.60.0
+line-profiler>=3.0.0

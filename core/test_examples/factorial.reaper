@@ -1,0 +1,11 @@
+# EXPECT: 120
+
+infect CollectSouls(corpse n) -> corpse {
+    if (n <= DEAD) {
+        reap RISEN;
+    }
+    reap n * CollectSouls(n - RISEN);
+}
+
+corpse total = CollectSouls(5);
+harvest total;

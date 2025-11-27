@@ -1,0 +1,13 @@
+# EXPECT: 0
+# EXPECT: 1
+# EXPECT: void
+# EXPECT: 42
+
+# Test built-in constants
+harvest DEAD;
+harvest RISEN;
+harvest void;
+
+# Test eternal variables
+eternal corpse MAX_ZOMBIES = 42;
+harvest MAX_ZOMBIES;

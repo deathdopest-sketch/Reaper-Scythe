@@ -1,0 +1,14 @@
+# EXPECT: RISEN
+# EXPECT: DEAD
+# EXPECT: RISEN
+# EXPECT: DEAD
+
+corpse x = 5;
+
+# Test short-circuit AND (corrupt)
+harvest (x > 0) corrupt (x < 10);
+harvest (x > 10) corrupt (x < 0);  # Second part not evaluated
+
+# Test short-circuit OR (infest)
+harvest (x > 0) infest (x < 0);    # Second part not evaluated
+harvest (x > 10) infest (x < 0);

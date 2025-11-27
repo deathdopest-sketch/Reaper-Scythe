@@ -1,0 +1,7 @@
+# ERROR: Recursion limit
+
+infect InfiniteRecursion(corpse n) -> corpse {
+    reap InfiniteRecursion(n + RISEN);
+}
+
+harvest InfiniteRecursion(DEAD);

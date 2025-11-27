@@ -1,0 +1,304 @@
+## REAPER Language Tutorial 03: Classes and Objects ##
+
+# This tutorial covers object-oriented programming in REAPER.
+
+# ============================================================================
+# BASIC CLASS DEFINITION
+# ============================================================================
+
+# Define a simple class
+tomb Zombie {
+    corpse health = 100;
+    soul name = "Unknown";
+    wraith is_alive = RISEN;
+    
+    # Constructor
+    infect Zombie(soul zombie_name, corpse initial_health = 100) {
+        this.name = zombie_name;
+        this.health = initial_health;
+    }
+    
+    # Method to get zombie info
+    infect GetInfo() -> soul {
+        soul status = is_alive ? "alive" : "dead";
+        reap "Zombie " + this.name + " has " + this.health + " health and is " + status;
+    }
+    
+    # Method to take damage
+    infect TakeDamage(corpse damage) {
+        this.health = this.health - damage;
+        if (this.health <= DEAD) {
+            this.health = DEAD;
+            this.is_alive = DEAD;
+        }
+    }
+    
+    # Method to heal
+    infect Heal(corpse amount) {
+        if (this.is_alive) {
+            this.health = this.health + amount;
+        }
+    }
+}
+
+# Create zombie instances
+tomb zombie1 = spawn Zombie("Walker", 150);
+tomb zombie2 = spawn Zombie("Runner", 80);
+
+harvest raise zombie1.GetInfo();
+harvest raise zombie2.GetInfo();
+
+# ============================================================================
+# CLASS WITH ARRAY PROPERTIES
+# ============================================================================
+
+tomb ZombieHorde {
+    crypt zombies = [];
+    soul horde_name = "Unnamed Horde";
+    
+    infect ZombieHorde(soul name) {
+        this.horde_name = name;
+    }
+    
+    # Add zombie to horde
+    infect AddZombie(tomb zombie) {
+        this.zombies.entomb(zombie);
+    }
+    
+    # Get horde size
+    infect GetSize() -> corpse {
+        reap this.zombies.curse();
+    }
+    
+    # Get horde info
+    infect GetHordeInfo() -> soul {
+        reap "Horde '" + this.horde_name + "' has " + this.GetSize() + " zombies";
+    }
+    
+    # Attack with entire horde
+    infect Attack(corpse damage) {
+        decay zombie in this.zombies {
+            zombie.TakeDamage(damage);
+        }
+    }
+}
+
+# Create horde and add zombies
+tomb horde = spawn ZombieHorde("Night Stalkers");
+raise horde.AddZombie(zombie1);
+raise horde.AddZombie(zombie2);
+
+harvest raise horde.GetHordeInfo();
+
+# ============================================================================
+# CLASS WITH DICTIONARY PROPERTIES
+# ============================================================================
+
+tomb ZombieStats {
+    grimoire stats = {};
+    
+    infect ZombieStats() {
+        this.stats{"health"} = 100;
+        this.stats{"hunger"} = 50;
+        this.stats{"speed"} = 2;
+        this.stats{"aggression"} = 75;
+    }
+    
+    # Get a stat value
+    infect GetStat(soul stat_name) -> corpse {
+        reap this.stats{stat_name};
+    }
+    
+    # Set a stat value
+    infect SetStat(soul stat_name, corpse value) {
+        this.stats{stat_name} = value;
+    }
+    
+    # Get all stats as string
+    infect GetAllStats() -> soul {
+        soul result = "Stats: ";
+        decay key in this.stats.inscribe() {
+            result = result + key + "=" + this.stats{key} + " ";
+        }
+        reap result;
+    }
+}
+
+tomb stats = spawn ZombieStats();
+harvest raise stats.GetAllStats();
+
+# Modify stats
+raise stats.SetStat("health", 150);
+raise stats.SetStat("speed", 5);
+harvest raise stats.GetAllStats();
+
+# ============================================================================
+# CLASS INHERITANCE (SIMULATED)
+# ============================================================================
+
+# Base zombie class
+tomb BaseZombie {
+    corpse health = 100;
+    soul name = "Zombie";
+    
+    infect BaseZombie(soul zombie_name) {
+        this.name = zombie_name;
+    }
+    
+    infect Attack() -> corpse {
+        reap 10;  # Base damage
+    }
+    
+    infect GetInfo() -> soul {
+        reap this.name + " (Base Zombie)";
+    }
+}
+
+# Specialized zombie class
+tomb FastZombie {
+    corpse health = 80;
+    soul name = "Fast Zombie";
+    corpse speed = 5;
+    
+    infect FastZombie(soul zombie_name) {
+        this.name = zombie_name;
+    }
+    
+    infect Attack() -> corpse {
+        reap 15;  # Higher damage
+    }
+    
+    infect GetInfo() -> soul {
+        reap this.name + " (Fast Zombie, Speed: " + this.speed + ")";
+    }
+    
+    infect Run() -> soul {
+        reap this.name + " is running at speed " + this.speed;
+    }
+}
+
+# Create specialized zombies
+tomb base_zombie = spawn BaseZombie("Walker");
+tomb fast_zombie = spawn FastZombie("Runner");
+
+harvest raise base_zombie.GetInfo();
+harvest raise fast_zombie.GetInfo();
+harvest raise fast_zombie.Run();
+
+# ============================================================================
+# CLASS WITH COMPLEX METHODS
+# ============================================================================
+
+tomb ZombieManager {
+    crypt zombies = [];
+    grimoire zombie_types = {};
+    
+    infect ZombieManager() {
+        this.zombie_types{"walker"} = "Slow but strong";
+        this.zombie_types{"runner"} = "Fast but weak";
+        this.zombie_types{"crawler"} = "Low but persistent";
+    }
+    
+    # Create zombie of specific type
+    infect CreateZombie(soul name, soul type) -> tomb {
+        tomb zombie = spawn Zombie(name);
+        
+        if (type == "walker") {
+            zombie.health = 150;
+        } otherwise if (type == "runner") {
+            zombie.health = 60;
+        } otherwise if (type == "crawler") {
+            zombie.health = 80;
+        }
+        
+        this.zombies.entomb(zombie);
+        reap zombie;
+    }
+    
+    # Get zombie by name
+    infect GetZombie(soul name) -> tomb {
+        decay zombie in this.zombies {
+            if (zombie.name == name) {
+                reap zombie;
+            }
+        }
+        reap void;  # Not found
+    }
+    
+    # Get all living zombies
+    infect GetLivingZombies() -> crypt {
+        crypt living = [];
+        decay zombie in this.zombies {
+            if (zombie.is_alive) {
+                living.entomb(zombie);
+            }
+        }
+        reap living;
+    }
+    
+    # Get manager statistics
+    infect GetStats() -> soul {
+        corpse total = this.zombies.curse();
+        corpse living = this.GetLivingZombies().curse();
+        corpse dead = total - living;
+        
+        reap "Total: " + total + ", Living: " + living + ", Dead: " + dead;
+    }
+}
+
+# Use the zombie manager
+tomb manager = spawn ZombieManager();
+
+tomb zombie1 = raise manager.CreateZombie("Alpha", "walker");
+tomb zombie2 = raise manager.CreateZombie("Beta", "runner");
+tomb zombie3 = raise manager.CreateZombie("Gamma", "crawler");
+
+harvest raise manager.GetStats();
+
+# Damage some zombies
+zombie2.TakeDamage(70);  # Kill the runner
+harvest raise manager.GetStats();
+
+# ============================================================================
+# CLASS WITH STATIC-LIKE BEHAVIOR
+# ============================================================================
+
+tomb ZombieFactory {
+    corpse total_created = DEAD;
+    
+    infect ZombieFactory() {
+        # Constructor
+    }
+    
+    # Factory method to create zombies
+    infect CreateZombie(soul name, soul type) -> tomb {
+        this.total_created = this.total_created + RISEN;
+        
+        tomb zombie = spawn Zombie(name);
+        
+        if (type == "elite") {
+            zombie.health = 200;
+        } otherwise if (type == "normal") {
+            zombie.health = 100;
+        } otherwise if (type == "weak") {
+            zombie.health = 50;
+        }
+        
+        reap zombie;
+    }
+    
+    # Get total zombies created
+    infect GetTotalCreated() -> corpse {
+        reap this.total_created;
+    }
+}
+
+tomb factory = spawn ZombieFactory();
+
+tomb elite = raise factory.CreateZombie("Elite Walker", "elite");
+tomb normal = raise factory.CreateZombie("Normal Walker", "normal");
+tomb weak = raise factory.CreateZombie("Weak Walker", "weak");
+
+harvest "Factory created " + raise factory.GetTotalCreated() + " zombies";
+
+harvest "Tutorial 03 complete! Classes and objects are mastered.";

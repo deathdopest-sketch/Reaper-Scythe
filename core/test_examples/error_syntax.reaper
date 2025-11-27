@@ -1,0 +1,4 @@
+# ERROR: Syntax error
+
+corpse x = 5  # Missing semicolon
+harvest x;

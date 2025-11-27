@@ -1,0 +1,19 @@
+# EXPECT: 20
+# EXPECT: 20
+# EXPECT: 10
+
+corpse x = 10;
+
+infect Outer() {
+    corpse x = 20;
+    
+    infect Inner() {
+        harvest x;
+    }
+    
+    raise Inner();
+    harvest x;
+}
+
+raise Outer();
+harvest x;

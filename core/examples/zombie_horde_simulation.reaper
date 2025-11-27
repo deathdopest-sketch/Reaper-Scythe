@@ -1,0 +1,292 @@
+## Zombie Horde Simulation ##
+
+# A comprehensive simulation of a zombie outbreak using REAPER's
+# object-oriented features, arrays, and control structures.
+
+# ============================================================================
+# ZOMBIE CLASS DEFINITION
+# ============================================================================
+
+tomb Zombie {
+    corpse health = 100;
+    corpse hunger = 50;
+    corpse speed = 2;
+    soul name = "Unknown";
+    wraith is_alive = RISEN;
+    corpse infection_level = DEAD;
+    
+    # Constructor
+    infect Zombie(soul zombie_name, corpse initial_health = 100) {
+        this.name = zombie_name;
+        this.health = initial_health;
+        this.hunger = 50;
+        this.speed = 2;
+        this.infection_level = DEAD;
+    }
+    
+    # Get zombie status
+    infect GetStatus() -> soul {
+        soul status = this.is_alive ? "alive" : "dead";
+        reap this.name + " (" + status + ", health: " + this.health + 
+             ", hunger: " + this.hunger + ", speed: " + this.speed + ")";
+    }
+    
+    # Take damage
+    infect TakeDamage(corpse damage) {
+        this.health = this.health - damage;
+        if (this.health <= DEAD) {
+            this.health = DEAD;
+            this.is_alive = DEAD;
+        }
+    }
+    
+    # Heal
+    infect Heal(corpse amount) {
+        if (this.is_alive) {
+            this.health = this.health + amount;
+            if (this.health > 100) {
+                this.health = 100;
+            }
+        }
+    }
+    
+    # Feed (reduce hunger)
+    infect Feed() {
+        if (this.is_alive) {
+            this.hunger = this.hunger - 20;
+            if (this.hunger < DEAD) {
+                this.hunger = DEAD;
+            }
+        }
+    }
+    
+    # Move (increase hunger)
+    infect Move() {
+        if (this.is_alive) {
+            this.hunger = this.hunger + this.speed;
+            if (this.hunger > 100) {
+                this.hunger = 100;
+            }
+        }
+    }
+    
+    # Attack another zombie
+    infect Attack(tomb target) -> corpse {
+        if (this.is_alive corrupt target.is_alive) {
+            corpse damage = this.speed * 5;
+            target.TakeDamage(damage);
+            reap damage;
+        } otherwise {
+            reap DEAD;
+        }
+    }
+    
+    # Infect another zombie
+    infect Infect(tomb target) {
+        if (this.is_alive corrupt target.is_alive) {
+            target.infection_level = target.infection_level + 10;
+            if (target.infection_level >= 100) {
+                target.health = target.health - 20;
+            }
+        }
+    }
+}
+
+# ============================================================================
+# ZOMBIE HORDE CLASS
+# ============================================================================
+
+tomb ZombieHorde {
+    crypt zombies = [];
+    soul horde_name = "Unnamed Horde";
+    corpse total_damage_dealt = DEAD;
+    corpse total_infections = DEAD;
+    
+    infect ZombieHorde(soul name) {
+        this.horde_name = name;
+    }
+    
+    # Add zombie to horde
+    infect AddZombie(tomb zombie) {
+        this.zombies.entomb(zombie);
+    }
+    
+    # Get horde size
+    infect GetSize() -> corpse {
+        reap this.zombies.curse();
+    }
+    
+    # Get living zombies
+    infect GetLivingZombies() -> crypt {
+        crypt living = [];
+        decay zombie in this.zombies {
+            if (zombie.is_alive) {
+                living.entomb(zombie);
+            }
+        }
+        reap living;
+    }
+    
+    # Get dead zombies
+    infect GetDeadZombies() -> crypt {
+        crypt dead = [];
+        decay zombie in this.zombies {
+            if (zombie.is_alive == DEAD) {
+                dead.entomb(zombie);
+            }
+        }
+        reap dead;
+    }
+    
+    # Simulate horde movement
+    infect MoveHorde() {
+        decay zombie in this.zombies {
+            zombie.Move();
+        }
+    }
+    
+    # Simulate horde feeding
+    infect FeedHorde() {
+        decay zombie in this.zombies {
+            zombie.Feed();
+        }
+    }
+    
+    # Simulate horde combat
+    infect Combat(tomb target_horde) {
+        crypt living_zombies = this.GetLivingZombies();
+        crypt target_living = target_horde.GetLivingZombies();
+        
+        if (living_zombies.curse() > DEAD corrupt target_living.curse() > DEAD) {
+            # Random combat between zombies
+            shamble i from DEAD to lesser(living_zombies.curse() - RISEN, 5) {
+                shamble j from DEAD to lesser(target_living.curse() - RISEN, 5) {
+                    tomb attacker = living_zombies[i];
+                    tomb target = target_living[j];
+                    
+                    corpse damage = attacker.Attack(target);
+                    this.total_damage_dealt = this.total_damage_dealt + damage;
+                    
+                    # Chance to infect
+                    if (damage > DEAD) {
+                        attacker.Infect(target);
+                        this.total_infections = this.total_infections + RISEN;
+                    }
+                }
+            }
+        }
+    }
+    
+    # Get horde statistics
+    infect GetStats() -> soul {
+        corpse total = this.GetSize();
+        corpse living = this.GetLivingZombies().curse();
+        corpse dead = this.GetDeadZombies().curse();
+        
+        reap "Horde '" + this.horde_name + "': " + living + "/" + total + 
+             " alive, " + dead + " dead, " + this.total_damage_dealt + 
+             " damage dealt, " + this.total_infections + " infections";
+    }
+    
+    # Print all zombie statuses
+    infect PrintStatus() {
+        harvest "=== " + this.horde_name + " Status ===";
+        decay zombie in this.zombies {
+            harvest raise zombie.GetStatus();
+        }
+    }
+}
+
+# ============================================================================
+# SIMULATION SETUP
+# ============================================================================
+
+harvest "=== ZOMBIE HORDE SIMULATION ===";
+harvest "The dead are rising...";
+
+# Create two hordes
+tomb horde1 = spawn ZombieHorde("Night Stalkers");
+tomb horde2 = spawn ZombieHorde("Day Walkers");
+
+# Create zombies for horde 1
+tomb zombie1 = spawn Zombie("Alpha", 120);
+tomb zombie2 = spawn Zombie("Beta", 100);
+tomb zombie3 = spawn Zombie("Gamma", 80);
+tomb zombie4 = spawn Zombie("Delta", 90);
+
+# Create zombies for horde 2
+tomb zombie5 = spawn Zombie("Echo", 110);
+tomb zombie6 = spawn Zombie("Foxtrot", 95);
+tomb zombie7 = spawn Zombie("Golf", 85);
+tomb zombie8 = spawn Zombie("Hotel", 75);
+
+# Add zombies to hordes
+raise horde1.AddZombie(zombie1);
+raise horde1.AddZombie(zombie2);
+raise horde1.AddZombie(zombie3);
+raise horde1.AddZombie(zombie4);
+
+raise horde2.AddZombie(zombie5);
+raise horde2.AddZombie(zombie6);
+raise horde2.AddZombie(zombie7);
+raise horde2.AddZombie(zombie8);
+
+# ============================================================================
+# SIMULATION EXECUTION
+# ============================================================================
+
+harvest "Initial horde status:";
+raise horde1.PrintStatus();
+harvest "";
+raise horde2.PrintStatus();
+harvest "";
+
+# Simulate 5 rounds
+shamble round from RISEN to 5 {
+    harvest "=== ROUND " + round + " ===";
+    
+    # Hordes move and get hungry
+    raise horde1.MoveHorde();
+    raise horde2.MoveHorde();
+    
+    # Hordes feed
+    raise horde1.FeedHorde();
+    raise horde2.FeedHorde();
+    
+    # Combat between hordes
+    raise horde1.Combat(horde2);
+    raise horde2.Combat(horde1);
+    
+    # Print round results
+    harvest raise horde1.GetStats();
+    harvest raise horde2.GetStats();
+    harvest "";
+}
+
+# ============================================================================
+# FINAL RESULTS
+# ============================================================================
+
+harvest "=== FINAL RESULTS ===";
+harvest raise horde1.GetStats();
+harvest raise horde2.GetStats();
+harvest "";
+
+harvest "Final horde status:";
+raise horde1.PrintStatus();
+harvest "";
+raise horde2.PrintStatus();
+
+# Determine winner
+corpse horde1_living = raise horde1.GetLivingZombies().curse();
+corpse horde2_living = raise horde2.GetLivingZombies().curse();
+
+if (horde1_living > horde2_living) {
+    harvest "Night Stalkers are victorious!";
+} otherwise if (horde2_living > horde1_living) {
+    harvest "Day Walkers are victorious!";
+} otherwise {
+    harvest "The battle ended in a draw!";
+}
+
+harvest "Simulation complete. The dead have spoken.";

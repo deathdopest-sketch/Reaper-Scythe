@@ -1,0 +1,15 @@
+# EXPECT: void
+# EXPECT: RISEN
+# EXPECT: DEAD
+# EXPECT: void
+
+soul name;
+harvest name;
+
+# Test void comparison
+harvest name == void;
+harvest name != void;
+
+# Test void assignment
+name = void;
+harvest name;

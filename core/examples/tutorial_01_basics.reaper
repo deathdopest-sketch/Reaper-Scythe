@@ -1,0 +1,144 @@
+## REAPER Language Tutorial 01: Basics ##
+
+# Welcome to the REAPER programming language!
+# This tutorial covers the fundamental concepts of the language.
+
+# ============================================================================
+# VARIABLES AND TYPES
+# ============================================================================
+
+# REAPER has 7 fundamental types:
+# - corpse: integers (whole numbers)
+# - soul: strings (text)
+# - crypt: arrays (ordered collections)
+# - grimoire: dictionaries (key-value pairs)
+# - tomb: class instances (objects)
+# - wraith: booleans (true/false)
+# - void: null values
+
+# Declare variables with their type
+corpse zombies = 10;
+soul message = "The dead walk among us";
+wraith is_night = RISEN;  # RISEN = true, DEAD = false
+
+# Print variables
+harvest "Zombie count: " + zombies;
+harvest "Message: " + message;
+harvest "Is it night? " + is_night;
+
+# ============================================================================
+# ARITHMETIC OPERATIONS
+# ============================================================================
+
+corpse a = 15;
+corpse b = 3;
+
+harvest "Addition: " + (a + b);
+harvest "Subtraction: " + (a - b);
+harvest "Multiplication: " + (a * b);
+harvest "Division: " + (a / b);  # Integer division
+harvest "Modulo: " + (a % b);
+
+# ============================================================================
+# COMPARISON OPERATORS
+# ============================================================================
+
+harvest "Is a > b? " + (a > b);
+harvest "Is a == b? " + (a == b);
+harvest "Is a != b? " + (a != b);
+
+# ============================================================================
+# LOGICAL OPERATORS
+# ============================================================================
+
+wraith condition1 = RISEN;
+wraith condition2 = DEAD;
+
+harvest "AND (corrupt): " + (condition1 corrupt condition2);
+harvest "OR (infest): " + (condition1 infest condition2);
+harvest "NOT (banish): " + banish condition1;
+
+# ============================================================================
+# ARRAYS (CRYPT)
+# ============================================================================
+
+crypt horde = [1, 2, 3, 5, 8];
+
+harvest "Horde size: " + horde.curse();
+harvest "First zombie: " + horde[0];
+harvest "Last zombie: " + horde[-1];
+
+# Add new zombie
+horde.entomb(13);
+harvest "New horde size: " + horde.curse();
+
+# ============================================================================
+# DICTIONARIES (GRIMOIRE)
+# ============================================================================
+
+grimoire zombie_stats = {"health": 100, "hunger": 50, "speed": 2};
+
+harvest "Zombie health: " + zombie_stats{"health"};
+harvest "Zombie hunger: " + zombie_stats{"hunger"};
+
+# Add new stat
+zombie_stats{"aggression"} = 75;
+harvest "Zombie aggression: " + zombie_stats{"aggression"};
+
+# ============================================================================
+# STRING OPERATIONS
+# ============================================================================
+
+soul name = "Zombie";
+soul greeting = "Hello, " + name + "!";
+
+harvest greeting;
+harvest "Name length: " + name.curse();
+harvest "Uppercase: " + name.scream();
+harvest "Lowercase: " + name.whisper();
+
+# ============================================================================
+# CONDITIONALS
+# ============================================================================
+
+corpse zombie_count = 5;
+
+if (zombie_count > 10) {
+    harvest "Zombie apocalypse!";
+} otherwise if (zombie_count > 5) {
+    harvest "Zombie outbreak!";
+} otherwise {
+    harvest "Just a few zombies...";
+}
+
+# ============================================================================
+# LOOPS
+# ============================================================================
+
+# For loop (shamble)
+harvest "Counting zombies:";
+shamble i from RISEN to 5 {
+    harvest "Zombie #" + i;
+}
+
+# Foreach loop (decay)
+crypt zombie_types = ["walker", "runner", "crawler"];
+harvest "Zombie types:";
+decay zombie_type in zombie_types {
+    harvest "- " + zombie_type;
+}
+
+# ============================================================================
+# CONSTANTS
+# ============================================================================
+
+# Built-in constants
+harvest "DEAD = " + DEAD;    # 0
+harvest "RISEN = " + RISEN;  # 1
+harvest "void = " + void;    # null
+
+# User-defined constants (eternal)
+eternal corpse MAX_ZOMBIES = 1000;
+harvest "Max zombies allowed: " + MAX_ZOMBIES;
+
+harvest "Tutorial 01 complete! The basics are mastered.";

@@ -1,0 +1,23 @@
+# EXPECT: 3
+# EXPECT: 5
+# EXPECT: 8
+# EXPECT: 8
+# EXPECT: 6
+# EXPECT: RISEN
+
+crypt horde = [1, 2, 3, 5, 8];
+
+# Test indexing
+harvest horde[2];
+harvest horde[3];
+harvest horde[4];
+
+# Test negative indexing
+harvest horde[-1];
+
+# Test array methods
+horde.entomb(13);
+harvest horde.curse();
+
+# Test contains
+harvest horde.haunt(3);

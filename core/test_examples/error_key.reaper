@@ -1,0 +1,4 @@
+# ERROR: Key not found
+
+grimoire stats = {"health": 100};
+harvest stats["mana"];

@@ -1,0 +1,10 @@
+shamble i from DEAD to 3 {
+    harvest i;
+    if (i == 1) {
+        persist;
+    }
+    if (i == 2) {
+        flee;
+    }
+    harvest "after";
+}

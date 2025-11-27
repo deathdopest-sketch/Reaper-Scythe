@@ -1,0 +1,9 @@
+# EXPECT: There are 5 zombies shambling around
+# EXPECT: Count: 10
+
+soul name = "zombies";
+corpse count = 5;
+harvest "There are #{count} #{name} shambling around";
+
+corpse x = 10;
+harvest "Count: #{x}";

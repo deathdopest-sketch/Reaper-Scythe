@@ -1,0 +1,8 @@
+# EXPECT: 123
+# EXPECT: 456
+# EXPECT: -789
+
+# Test string to integer conversion
+harvest raise_corpse("123");
+harvest raise_corpse("456");
+harvest raise_corpse("-789");

@@ -1,0 +1,15 @@
+# EXPECT: 3
+# EXPECT: 2
+# EXPECT: 1
+# EXPECT: 0
+
+crypt horde = [1, 2, 3];
+
+# Test method chaining (where possible)
+harvest horde.curse();
+horde.exhume(0);
+harvest horde.curse();
+horde.exhume(0);
+harvest horde.curse();
+horde.exhume(0);
+harvest horde.curse();

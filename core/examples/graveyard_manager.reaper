@@ -1,0 +1,337 @@
+## Graveyard Manager ##
+
+# A comprehensive graveyard management system using REAPER's
+# dictionary operations, string processing, and data management features.
+
+# ============================================================================
+# GRAVE CLASS DEFINITION
+# ============================================================================
+
+tomb Grave {
+    soul name = "Unknown";
+    soul date_of_death = "Unknown";
+    corpse age_at_death = DEAD;
+    soul cause_of_death = "Unknown";
+    wraith is_occupied = DEAD;
+    soul epitaph = "";
+    
+    # Constructor
+    infect Grave(soul deceased_name, soul death_date, corpse age, soul cause) {
+        this.name = deceased_name;
+        this.date_of_death = death_date;
+        this.age_at_death = age;
+        this.cause_of_death = cause;
+        this.is_occupied = RISEN;
+        this.epitaph = "Rest in peace, " + deceased_name;
+    }
+    
+    # Get grave information
+    infect GetInfo() -> soul {
+        reap "Grave of " + this.name + " (died " + this.date_of_death + 
+             " at age " + this.age_at_death + ", cause: " + this.cause_of_death + ")";
+    }
+    
+    # Get epitaph
+    infect GetEpitaph() -> soul {
+        reap this.epitaph;
+    }
+    
+    # Set custom epitaph
+    infect SetEpitaph(soul new_epitaph) {
+        this.epitaph = new_epitaph;
+    }
+    
+    # Check if grave is occupied
+    infect IsOccupied() -> wraith {
+        reap this.is_occupied;
+    }
+    
+    # Vacate grave
+    infect Vacate() {
+        this.is_occupied = DEAD;
+        this.name = "Vacant";
+        this.date_of_death = "N/A";
+        this.age_at_death = DEAD;
+        this.cause_of_death = "N/A";
+        this.epitaph = "This grave is available";
+    }
+}
+
+# ============================================================================
+# GRAVEYARD CLASS DEFINITION
+# ============================================================================
+
+tomb Graveyard {
+    grimoire graves = {};
+    soul graveyard_name = "Unnamed Graveyard";
+    corpse total_graves = DEAD;
+    corpse occupied_graves = DEAD;
+    crypt grave_numbers = [];
+    
+    infect Graveyard(soul name) {
+        this.graveyard_name = name;
+        this.total_graves = DEAD;
+        this.occupied_graves = DEAD;
+    }
+    
+    # Add a new grave
+    infect AddGrave(soul grave_number, tomb grave) {
+        this.graves{grave_number} = grave;
+        this.total_graves = this.total_graves + RISEN;
+        this.grave_numbers.entomb(grave_number);
+        
+        if (grave.IsOccupied()) {
+            this.occupied_graves = this.occupied_graves + RISEN;
+        }
+    }
+    
+    # Get grave by number
+    infect GetGrave(soul grave_number) -> tomb {
+        if (this.graves.haunt(grave_number)) {
+            reap this.graves{grave_number};
+        } otherwise {
+            reap void;
+        }
+    }
+    
+    # Remove grave
+    infect RemoveGrave(soul grave_number) {
+        if (this.graves.haunt(grave_number)) {
+            tomb grave = this.graves{grave_number};
+            if (grave.IsOccupied()) {
+                this.occupied_graves = this.occupied_graves - RISEN;
+            }
+            this.graves.banish(grave_number);
+            this.total_graves = this.total_graves - RISEN;
+        }
+    }
+    
+    # Find graves by name
+    infect FindGravesByName(soul name) -> crypt {
+        crypt found_graves = [];
+        decay grave_number in this.grave_numbers {
+            tomb grave = this.graves{grave_number};
+            if (grave.name == name) {
+                found_graves.entomb(grave_number);
+            }
+        }
+        reap found_graves;
+    }
+    
+    # Find graves by cause of death
+    infect FindGravesByCause(soul cause) -> crypt {
+        crypt found_graves = [];
+        decay grave_number in this.grave_numbers {
+            tomb grave = this.graves{grave_number};
+            if (grave.cause_of_death == cause) {
+                found_graves.entomb(grave_number);
+            }
+        }
+        reap found_graves;
+    }
+    
+    # Get available grave numbers
+    infect GetAvailableGraves() -> crypt {
+        crypt available = [];
+        decay grave_number in this.grave_numbers {
+            tomb grave = this.graves{grave_number};
+            if (grave.IsOccupied() == DEAD) {
+                available.entomb(grave_number);
+            }
+        }
+        reap available;
+    }
+    
+    # Get graveyard statistics
+    infect GetStats() -> soul {
+        corpse available = this.GetAvailableGraves().curse();
+        reap "Graveyard '" + this.graveyard_name + "': " + this.total_graves + 
+             " total graves, " + this.occupied_graves + " occupied, " + 
+             available + " available";
+    }
+    
+    # Print all graves
+    infect PrintAllGraves() {
+        harvest "=== " + this.graveyard_name + " - All Graves ===";
+        decay grave_number in this.grave_numbers {
+            tomb grave = this.graves{grave_number};
+            harvest "Grave " + grave_number + ": " + raise grave.GetInfo();
+        }
+    }
+    
+    # Print occupied graves only
+    infect PrintOccupiedGraves() {
+        harvest "=== " + this.graveyard_name + " - Occupied Graves ===";
+        decay grave_number in this.grave_numbers {
+            tomb grave = this.graves{grave_number};
+            if (grave.IsOccupied()) {
+                harvest "Grave " + grave_number + ": " + raise grave.GetInfo();
+            }
+        }
+    }
+    
+    # Search graves by criteria
+    infect SearchGraves(soul criteria, soul value) -> crypt {
+        crypt results = [];
+        
+        if (criteria == "name") {
+            results = this.FindGravesByName(value);
+        } otherwise if (criteria == "cause") {
+            results = this.FindGravesByCause(value);
+        } otherwise if (criteria == "available") {
+            results = this.GetAvailableGraves();
+        }
+        
+        reap results;
+    }
+}
+
+# ============================================================================
+# GRAVEYARD MANAGER SETUP
+# ============================================================================
+
+harvest "=== GRAVEYARD MANAGEMENT SYSTEM ===";
+harvest "Managing the eternal rest of the departed...";
+
+# Create graveyard
+tomb graveyard = spawn Graveyard("Eternal Rest Cemetery");
+
+# ============================================================================
+# ADD INITIAL GRAVES
+# ============================================================================
+
+# Add some graves
+tomb grave1 = spawn Grave("John Smith", "2023-01-15", 75, "Natural causes");
+tomb grave2 = spawn Grave("Mary Johnson", "2023-02-20", 68, "Illness");
+tomb grave3 = spawn Grave("Robert Brown", "2023-03-10", 82, "Natural causes");
+tomb grave4 = spawn Grave("Sarah Davis", "2023-04-05", 45, "Accident");
+tomb grave5 = spawn Grave("Michael Wilson", "2023-05-12", 60, "Illness");
+
+# Add graves to graveyard
+raise graveyard.AddGrave("A-001", grave1);
+raise graveyard.AddGrave("A-002", grave2);
+raise graveyard.AddGrave("A-003", grave3);
+raise graveyard.AddGrave("B-001", grave4);
+raise graveyard.AddGrave("B-002", grave5);
+
+# ============================================================================
+# GRAVEYARD OPERATIONS
+# ============================================================================
+
+harvest "Initial graveyard status:";
+harvest raise graveyard.GetStats();
+harvest "";
+
+# Print all graves
+raise graveyard.PrintAllGraves();
+harvest "";
+
+# Search for graves by cause of death
+harvest "=== SEARCH RESULTS ===";
+crypt natural_causes = raise graveyard.SearchGraves("cause", "Natural causes");
+harvest "Graves with natural causes: " + natural_causes.curse();
+decay grave_num in natural_causes {
+    harvest "  - Grave " + grave_num;
+}
+
+crypt illness_graves = raise graveyard.SearchGraves("cause", "Illness");
+harvest "Graves with illness: " + illness_graves.curse();
+decay grave_num in illness_graves {
+    harvest "  - Grave " + grave_num;
+}
+
+# ============================================================================
+# GRAVE MANAGEMENT
+# ============================================================================
+
+harvest "";
+harvest "=== GRAVE MANAGEMENT ===";
+
+# Get specific grave
+tomb specific_grave = raise graveyard.GetGrave("A-001");
+if (specific_grave != void) {
+    harvest "Grave A-001 details:";
+    harvest raise specific_grave.GetInfo();
+    harvest "Epitaph: " + raise specific_grave.GetEpitaph();
+}
+
+# Set custom epitaph
+raise specific_grave.SetEpitaph("Beloved father and husband, forever in our hearts");
+harvest "Updated epitaph: " + raise specific_grave.GetEpitaph();
+
+# ============================================================================
+# ADDITIONAL GRAVES
+# ============================================================================
+
+harvest "";
+harvest "=== ADDING MORE GRAVES ===";
+
+# Add more graves
+tomb grave6 = spawn Grave("Elizabeth Taylor", "2023-06-18", 55, "Natural causes");
+tomb grave7 = spawn Grave("David Miller", "2023-07-22", 70, "Illness");
+tomb grave8 = spawn Grave("Jennifer Garcia", "2023-08-30", 38, "Accident");
+
+raise graveyard.AddGrave("C-001", grave6);
+raise graveyard.AddGrave("C-002", grave7);
+raise graveyard.AddGrave("C-003", grave8);
+
+harvest "Updated graveyard status:";
+harvest raise graveyard.GetStats();
+
+# ============================================================================
+# SEARCH AND FILTERING
+# ============================================================================
+
+harvest "";
+harvest "=== ADVANCED SEARCH ===";
+
+# Search by name
+crypt smith_graves = raise graveyard.SearchGraves("name", "John Smith");
+harvest "Graves for John Smith: " + smith_graves.curse();
+
+# Search by cause
+crypt accident_graves = raise graveyard.SearchGraves("cause", "Accident");
+harvest "Graves with accidents: " + accident_graves.curse();
+
+# Get available graves
+crypt available = raise graveyard.SearchGraves("available", "");
+harvest "Available graves: " + available.curse();
+
+# ============================================================================
+# GRAVEYARD STATISTICS
+# ============================================================================
+
+harvest "";
+harvest "=== GRAVEYARD STATISTICS ===";
+
+# Count graves by cause
+grimoire cause_counts = {};
+decay grave_number in graveyard.grave_numbers {
+    tomb grave = graveyard.graves{grave_number};
+    soul cause = grave.cause_of_death;
+    
+    if (cause_counts.haunt(cause)) {
+        cause_counts{cause} = cause_counts{cause} + RISEN;
+    } otherwise {
+        cause_counts{cause} = RISEN;
+    }
+}
+
+harvest "Graves by cause of death:";
+decay cause in cause_counts.inscribe() {
+    harvest "  " + cause + ": " + cause_counts{cause} + " graves";
+}
+
+# ============================================================================
+# FINAL REPORT
+# ============================================================================
+
+harvest "";
+harvest "=== FINAL GRAVEYARD REPORT ===";
+harvest raise graveyard.GetStats();
+harvest "";
+harvest "Occupied graves:";
+raise graveyard.PrintOccupiedGraves();
+
+harvest "";
+harvest "Graveyard management complete. The departed rest in peace.";

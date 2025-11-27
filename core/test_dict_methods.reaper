@@ -1,0 +1,8 @@
+grimoire dict = {"a": 1, "b": 2};
+harvest dict.curse();
+harvest dict.inscribe();
+harvest dict.possess();
+harvest dict.summon("a");
+harvest dict.summon("c");
+dict.banish("a");
+harvest dict.curse();

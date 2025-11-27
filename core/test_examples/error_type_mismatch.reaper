@@ -1,0 +1,5 @@
+# ERROR: Type mismatch
+
+corpse x = 5;
+soul y = "hello";
+harvest x + y;

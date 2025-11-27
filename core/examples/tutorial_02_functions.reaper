@@ -1,0 +1,189 @@
+## REAPER Language Tutorial 02: Functions ##
+
+# This tutorial covers function definition, calling, and advanced features.
+
+# ============================================================================
+# BASIC FUNCTION DEFINITION
+# ============================================================================
+
+# Define a simple function
+infect Greet(soul name) {
+    harvest "Greetings from the graveyard, " + name + "!";
+}
+
+# Call the function
+raise Greet("mortal");
+raise Greet("zombie");
+
+# ============================================================================
+# FUNCTIONS WITH RETURN VALUES
+# ============================================================================
+
+# Function that returns a value
+infect CalculateDamage(corpse base_damage, corpse multiplier) -> corpse {
+    reap base_damage * multiplier;
+}
+
+corpse damage = raise CalculateDamage(10, 3);
+harvest "Total damage: " + damage;
+
+# ============================================================================
+# FUNCTIONS WITH DEFAULT PARAMETERS
+# ============================================================================
+
+# Function with default parameter
+infect CreateZombie(soul name, corpse health = 100) {
+    harvest "Created zombie: " + name + " with " + health + " health";
+}
+
+# Call with both parameters
+raise CreateZombie("Walker", 150);
+
+# Call with default parameter
+raise CreateZombie("Runner");
+
+# ============================================================================
+# RECURSIVE FUNCTIONS
+# ============================================================================
+
+# Calculate factorial recursively
+infect Factorial(corpse n) -> corpse {
+    if (n <= DEAD) {
+        reap RISEN;
+    }
+    reap n * raise Factorial(n - RISEN);
+}
+
+harvest "5! = " + raise Factorial(5);
+harvest "3! = " + raise Factorial(3);
+
+# ============================================================================
+# FIBONACCI SEQUENCE
+# ============================================================================
+
+# Generate Fibonacci numbers
+infect Fibonacci(corpse n) -> corpse {
+    if (n <= RISEN) {
+        reap n;
+    }
+    reap raise Fibonacci(n - RISEN) + raise Fibonacci(n - 2);
+}
+
+harvest "Fibonacci sequence:";
+shamble i from DEAD to 10 {
+    harvest "F(" + i + ") = " + raise Fibonacci(i);
+}
+
+# ============================================================================
+# FUNCTIONS WITH ARRAYS
+# ============================================================================
+
+# Function that processes an array
+infect SumArray(crypt numbers) -> corpse {
+    corpse total = DEAD;
+    decay num in numbers {
+        total = total + num;
+    }
+    reap total;
+}
+
+crypt zombie_counts = [5, 10, 15, 20];
+corpse total_zombies = raise SumArray(zombie_counts);
+harvest "Total zombies: " + total_zombies;
+
+# ============================================================================
+# FUNCTIONS WITH DICTIONARIES
+# ============================================================================
+
+# Function that processes a dictionary
+infect GetZombieInfo(grimoire zombie) -> soul {
+    soul info = "Health: " + zombie{"health"} + ", Hunger: " + zombie{"hunger"};
+    reap info;
+}
+
+grimoire zombie_data = {"health": 100, "hunger": 75, "speed": 2};
+soul info = raise GetZombieInfo(zombie_data);
+harvest "Zombie info: " + info;
+
+# ============================================================================
+# HIGHER-ORDER FUNCTIONS (SIMULATED)
+# ============================================================================
+
+# Function that returns a function (simulated with closures)
+infect CreateMultiplier(corpse factor) -> infect {
+    infect Multiply(corpse value) -> corpse {
+        reap value * factor;
+    }
+    reap Multiply;
+}
+
+infect Double = raise CreateMultiplier(2);
+infect Triple = raise CreateMultiplier(3);
+
+harvest "Double 5: " + raise Double(5);
+harvest "Triple 5: " + raise Triple(5);
+
+# ============================================================================
+# STRING PROCESSING FUNCTIONS
+# ============================================================================
+
+# Function to reverse a string
+infect ReverseString(soul text) -> soul {
+    soul reversed = "";
+    shamble i from text.curse() - RISEN to DEAD {
+        reversed = reversed + text[i];
+    }
+    reap reversed;
+}
+
+soul original = "zombie";
+soul reversed = raise ReverseString(original);
+harvest "Original: " + original;
+harvest "Reversed: " + reversed;
+
+# ============================================================================
+# MATHEMATICAL FUNCTIONS
+# ============================================================================
+
+# Power function
+infect Power(corpse base, corpse exponent) -> corpse {
+    if (exponent == DEAD) {
+        reap RISEN;
+    }
+    reap base * raise Power(base, exponent - RISEN);
+}
+
+harvest "2^3 = " + raise Power(2, 3);
+harvest "5^2 = " + raise Power(5, 2);
+
+# ============================================================================
+# ERROR HANDLING IN FUNCTIONS
+# ============================================================================
+
+# Function with input validation
+infect SafeDivide(corpse a, corpse b) -> corpse {
+    if (b == DEAD) {
+        harvest "Error: Division by zero!";
+        reap DEAD;
+    }
+    reap a / b;
+}
+
+harvest "10 / 2 = " + raise SafeDivide(10, 2);
+harvest "10 / 0 = " + raise SafeDivide(10, 0);
+
+# ============================================================================
+# FUNCTION COMPOSITION
+# ============================================================================
+
+# Compose functions by calling them in sequence
+infect ProcessZombieCount(corpse raw_count) -> soul {
+    corpse doubled = raise Double(raw_count);
+    corpse tripled = raise Triple(doubled);
+    soul result = "Processed count: " + tripled;
+    reap result;
+}
+
+harvest raise ProcessZombieCount(5);
+
+harvest "Tutorial 02 complete! Functions are mastered.";

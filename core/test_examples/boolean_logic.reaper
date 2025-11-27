@@ -1,0 +1,29 @@
+# EXPECT: RISEN
+# EXPECT: DEAD
+# EXPECT: DEAD
+# EXPECT: DEAD
+# EXPECT: RISEN
+# EXPECT: RISEN
+# EXPECT: RISEN
+# EXPECT: DEAD
+# EXPECT: DEAD
+# EXPECT: RISEN
+
+wraith alive = RISEN;
+wraith dead = DEAD;
+
+# Test logical AND
+harvest alive corrupt alive;
+harvest alive corrupt dead;
+harvest dead corrupt alive;
+harvest dead corrupt dead;
+
+# Test logical OR
+harvest alive infest alive;
+harvest alive infest dead;
+harvest dead infest alive;
+harvest dead infest dead;
+
+# Test logical NOT
+harvest banish alive;
+harvest banish dead;

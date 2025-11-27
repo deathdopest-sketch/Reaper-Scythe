@@ -1,0 +1,2 @@
+soul str = "hello";
+harvest str.length;

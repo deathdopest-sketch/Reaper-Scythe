@@ -1,0 +1,8 @@
+# EXPECT: 5
+# EXPECT: 3
+# EXPECT: 7
+
+# Test built-in math functions
+harvest absolute(-5);
+harvest lesser(3, 7);
+harvest greater(3, 7);

@@ -1,0 +1,22 @@
+# EXPECT: 15
+# EXPECT: 10
+# EXPECT: 50
+# EXPECT: 10
+# EXPECT: 1
+
+corpse x = 10;
+
+x += 5;
+harvest x;
+
+x -= 5;
+harvest x;
+
+x *= 5;
+harvest x;
+
+x /= 5;
+harvest x;
+
+x %= 3;
+harvest x;

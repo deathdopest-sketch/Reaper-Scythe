@@ -1,0 +1,7 @@
+crypt arr = [1, 2, 3];
+harvest arr.curse();
+arr.entomb(4);
+harvest arr;
+arr.exhume(0);
+harvest arr;
+harvest arr.haunt(3);

@@ -1,0 +1,84 @@
+{
+  "id": "basics_01_introduction",
+  "title": "Introduction to Reaper",
+  "description": "Learn the basics of the Reaper language and its security-focused syntax",
+  "lessons": [
+    {
+      "id": "intro_01",
+      "title": "Welcome to Reaper",
+      "description": "Introduction to the Reaper language",
+      "content": "# Welcome to Reaper\n\nReaper is a **security-focused programming language** designed for penetration testing, security research, and ethical hacking.\n\n## Key Features\n\n- Security-first design\n- Undead-themed syntax\n- Type safety\n- Built-in security libraries\n\n## Your First Program\n\nLet's write your first Reaper program!",
+      "code_example": "harvest(\"Hello, Reaper!\");",
+      "estimated_time": 5,
+      "order": 1
+    },
+    {
+      "id": "intro_02",
+      "title": "Variables and Types",
+      "description": "Learn about Reaper's type system",
+      "content": "# Variables and Types\n\nReaper has several built-in types:\n\n- `corpse`: Integer numbers\n- `soul`: Floating-point numbers\n- `crypt`: Strings\n- `grimoire`: Arrays\n- `tomb`: Dictionaries\n\n## Example\n\n```reaper\ncorpse age = 25;\ncrypt name = \"Reaper\";\ngrimoire numbers = [1, 2, 3];\n```",
+      "code_example": "corpse x = 10;\ncrypt message = \"Hello\";\nharvest(x);\nharvest(message);",
+      "estimated_time": 10,
+      "order": 2,
+      "challenge": {
+        "id": "challenge_01",
+        "type": "code",
+        "description": "Create a variable called 'age' with type 'corpse' and value 25, then print it using harvest()",
+        "starter_code": "// Your code here\n",
+        "test_cases": [
+          {
+            "description": "Variable should be defined",
+            "expected": "variable_exists"
+          },
+          {
+            "description": "Should print the value",
+            "expected": "output_25"
+          }
+        ],
+        "hints": [
+          "Use 'corpse' for integer type",
+          "Use harvest() to print"
+        ]
+      }
+    },
+    {
+      "id": "intro_03",
+      "title": "Functions",
+      "description": "Learn how to define and call functions",
+      "content": "# Functions in Reaper\n\nFunctions allow you to reuse code. Here's the syntax:\n\n```reaper\nfunction name(param_type param_name): return_type {\n    // code here\n    return value;\n}\n```",
+      "code_example": "function greet(crypt name): void {\n    harvest(\"Hello, \" + name);\n}\n\ngreet(\"Reaper\");",
+      "estimated_time": 15,
+      "order": 3
+    }
+  ],
+  "quizzes": [
+    {
+      "id": "quiz_01",
+      "question": "What is the integer type in Reaper?",
+      "options": [
+        "corpse",
+        "soul",
+        "crypt",
+        "tomb"
+      ],
+      "correct_answer": 0,
+      "explanation": "The 'corpse' type represents integers in Reaper."
+    },
+    {
+      "id": "quiz_02",
+      "question": "Which function is used to print output?",
+      "options": [
+        "print()",
+        "harvest()",
+        "output()",
+        "display()"
+      ],
+      "correct_answer": 1,
+      "explanation": "The 'harvest()' function is used to print output in Reaper."
+    }
+  ],
+  "prerequisites": [],
+  "estimated_duration": 30,
+  "difficulty": "beginner"
+}
+

@@ -1,0 +1,10 @@
+# EXPECT: 3
+# EXPECT: arg1
+# EXPECT: arg2
+# EXPECT: arg3
+
+# Test command-line arguments (simulated)
+harvest ritual_args.curse();
+harvest ritual_args[0];
+harvest ritual_args[1];
+harvest ritual_args[2];

@@ -1,0 +1,19 @@
+# EXPECT: 1000
+# EXPECT: 1000
+
+# Test large array operations
+crypt horde = [];
+
+shamble i from RISEN to 1000 {
+    horde.entomb(i);
+}
+
+harvest horde.curse();
+
+# Test large string operations
+soul message = "";
+shamble i from RISEN to 1000 {
+    message = message + "x";
+}
+
+harvest message.curse();

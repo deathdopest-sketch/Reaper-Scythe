@@ -1,0 +1,18 @@
+# EXPECT: 100
+# EXPECT: 50
+# EXPECT: 2
+# EXPECT: RISEN
+# EXPECT: DEAD
+
+grimoire stats = {"health": 100, "hunger": 50};
+
+# Test key access
+harvest stats["health"];
+harvest stats["hunger"];
+
+# Test key count
+harvest stats.curse();
+
+# Test contains
+harvest stats.haunt("health");
+harvest stats.haunt("mana");

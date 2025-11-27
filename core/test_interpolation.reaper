@@ -1,0 +1,3 @@
+corpse x = 5;
+soul str = "Count: #{x}";
+harvest str;

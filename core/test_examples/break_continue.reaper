@@ -1,0 +1,14 @@
+# EXPECT: 1
+# EXPECT: 2
+# EXPECT: 4
+# EXPECT: 5
+
+shamble i from RISEN to 5 {
+    if (i == 3) {
+        persist;
+    }
+    if (i > 5) {
+        flee;
+    }
+    harvest i;
+}

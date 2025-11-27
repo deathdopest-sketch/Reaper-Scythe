@@ -1,0 +1,21 @@
+# EXPECT: High
+# EXPECT: Medium
+# EXPECT: Low
+# EXPECT: None
+
+infect CheckLevel(corpse value) {
+    if (value >= 80) {
+        harvest "High";
+    } otherwise if (value >= 50) {
+        harvest "Medium";
+    } otherwise if (value >= 20) {
+        harvest "Low";
+    } otherwise {
+        harvest "None";
+    }
+}
+
+raise CheckLevel(90);
+raise CheckLevel(60);
+raise CheckLevel(30);
+raise CheckLevel(10);
