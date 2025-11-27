@@ -185,6 +185,8 @@ class Parser:
                 return self._parse_class_definition()
         elif self._match(TokenType.IF):
             return self._parse_if_statement()
+        elif self._match(TokenType.JUDGE):
+            return self._parse_judge_statement()
         elif self._match(TokenType.SHAMBLE):
             return self._parse_shamble_loop()
         elif self._match(TokenType.DECAY):
@@ -400,6 +402,77 @@ class Parser:
                 break
         
         return IfNode(condition, if_body, elif_conditions, elif_bodies, else_body)
+    
+    def _parse_judge_statement(self) -> JudgeNode:
+        """Parse judge (switch/match) statement: judge (expr) { case value: {...} default: {...} }."""
+        start_token = self._previous()
+        
+        # Parse expression in parentheses
+        self._consume(TokenType.LPAREN, "Expected '(' after 'judge'")
+        expression = self._parse_expression()
+        self._consume(TokenType.RPAREN, "Expected ')' after judge expression")
+        
+        # Parse opening brace
+        self._consume(TokenType.LBRACE, "Expected '{' after judge expression")
+        
+        cases = []
+        default_body = None
+        
+        # Parse cases and default
+        while not self._check(TokenType.RBRACE) and not self._is_at_end():
+            # Skip newlines
+            self._skip_newlines()
+            
+            if self._check(TokenType.RBRACE):
+                break
+            
+            if self._match(TokenType.CASE):
+                # Parse case value
+                case_value = self._parse_expression()
+                self._consume(TokenType.COLON, "Expected ':' after case value")
+                
+                # Skip newlines after colon
+                self._skip_newlines()
+                
+                # Parse case body (block or single statement)
+                if self._check(TokenType.LBRACE):
+                    case_body = self._parse_block()
+                else:
+                    # Single statement case
+                    case_body = self._parse_statement()
+                
+                cases.append((case_value, case_body))
+            
+            elif self._match(TokenType.DEFAULT):
+                self._consume(TokenType.COLON, "Expected ':' after 'default'")
+                
+                # Skip newlines after colon
+                self._skip_newlines()
+                
+                # Parse default body
+                if self._check(TokenType.LBRACE):
+                    default_body = self._parse_block()
+                else:
+                    # Single statement default
+                    default_body = self._parse_statement()
+                
+                # Default should be last, but we'll continue parsing in case there are more cases
+                # (some languages allow this, we'll just ignore them)
+            
+            else:
+                # Unexpected token in judge statement
+                token = self._peek()
+                raise ReaperSyntaxError(
+                    f"Expected 'case' or 'default' in judge statement, got {token.type.value}",
+                    token.line,
+                    token.column,
+                    token.filename
+                )
+        
+        # Parse closing brace
+        self._consume(TokenType.RBRACE, "Expected '}' after judge statement")
+        
+        return JudgeNode(expression, cases, default_body, start_token.line, start_token.column, start_token.filename)
     
     def _parse_shamble_loop(self) -> ShambleNode:
         """Parse shamble (for) loop."""

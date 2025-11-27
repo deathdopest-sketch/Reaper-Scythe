@@ -36,6 +36,9 @@ class TokenType(Enum):
     SPAWN = "SPAWN"
     IF = "IF"
     OTHERWISE = "OTHERWISE"
+    JUDGE = "JUDGE"  # Switch/match statement
+    CASE = "CASE"    # Case label
+    DEFAULT = "DEFAULT"  # Default case
     FLEE = "FLEE"
     PERSIST = "PERSIST"
     REST = "REST"
@@ -194,6 +197,9 @@ KEYWORDS = {
     "spawn": TokenType.SPAWN,
     "if": TokenType.IF,
     "otherwise": TokenType.OTHERWISE,
+    "judge": TokenType.JUDGE,  # Switch/match statement
+    "case": TokenType.CASE,    # Case label
+    "default": TokenType.DEFAULT,  # Default case
     "flee": TokenType.FLEE,
     "persist": TokenType.PERSIST,
     "rest": TokenType.REST,

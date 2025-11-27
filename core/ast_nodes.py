@@ -455,6 +455,54 @@ class MethodCallNode(ASTNode):
 # Control Flow Nodes
 # ============================================================================
 
+class JudgeNode(ASTNode):
+    """Represents a judge (switch/match) statement."""
+    
+    def __init__(
+        self,
+        expression: ASTNode,
+        cases: List[Tuple[Optional[ASTNode], ASTNode]],  # List of (value, body) tuples, None for default
+        default_body: Optional[ASTNode] = None,
+        line: int = 0,
+        column: int = 0,
+        filename: str = "<unknown>"
+    ):
+        super().__init__(line, column, filename)
+        self.expression = expression  # Expression to match against
+        self.cases = cases  # List of (case_value, case_body) tuples
+        self.default_body = default_body  # Optional default case body
+    
+    def accept(self, visitor):
+        return visitor.visit_judge_node(self)
+    
+    def __repr__(self) -> str:
+        return f"JudgeNode({len(self.cases)} cases, {self.filename}:{self.line}:{self.column})"
+
+
+class JudgeNode(ASTNode):
+    """Represents a judge (switch/match) statement."""
+    
+    def __init__(
+        self,
+        expression: ASTNode,
+        cases: List[Tuple[Optional[ASTNode], ASTNode]],  # List of (value, body) tuples, None for default
+        default_body: Optional[ASTNode] = None,
+        line: int = 0,
+        column: int = 0,
+        filename: str = "<unknown>"
+    ):
+        super().__init__(line, column, filename)
+        self.expression = expression  # Expression to match against
+        self.cases = cases  # List of (case_value, case_body) tuples
+        self.default_body = default_body  # Optional default case body
+    
+    def accept(self, visitor):
+        return visitor.visit_judge_node(self)
+    
+    def __repr__(self) -> str:
+        return f"JudgeNode({len(self.cases)} cases, {self.filename}:{self.line}:{self.column})"
+
+
 class IfNode(ASTNode):
     """Represents an if statement with else-if chains."""
     

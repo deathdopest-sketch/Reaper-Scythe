@@ -810,6 +810,27 @@ class Interpreter:
     # Control Flow Node Visitors
     # ============================================================================
     
+    def visit_judge_node(self, node: JudgeNode) -> Any:
+        """Visit judge (switch/match) statement node."""
+        # Evaluate the expression to match against
+        match_value = self._execute(node.expression)
+        
+        # Check each case
+        for case_value, case_body in node.cases:
+            case_val = self._execute(case_value)
+            
+            # Compare values (supports == comparison)
+            if match_value == case_val:
+                # Match found - execute case body
+                return self._execute(case_body)
+        
+        # No match found - execute default if present
+        if node.default_body:
+            return self._execute(node.default_body)
+        
+        # No match and no default - return None
+        return None
+    
     def visit_if_node(self, node: IfNode) -> Any:
         """Visit if statement node."""
         condition = self._execute(node.condition)
