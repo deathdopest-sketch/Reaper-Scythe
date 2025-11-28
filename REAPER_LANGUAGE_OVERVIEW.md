@@ -907,10 +907,65 @@ reaper-lang/
 
 ---
 
-## 🔮 Future Features
+## 🔮 Recent Features (v1.0.0 - v1.7.0)
 
-### Version 1.1 (Planned)
-- Floating-point type (`phantom`)
+### Version 1.7.0 - Standard Library Expansion ✅
+- Graveyard utility module with 40+ functions
+- Time, math, string, collection, and random utilities
+
+### Version 1.6.0 - JIT Compilation ✅
+- Execution profiling system
+- Hot path detection and optimization
+- Profile-guided optimization framework
+
+### Version 1.5.0 - Package Manager ✅
+- Complete package management system
+- Git-based package installation
+- Dependency resolution
+
+### Version 1.4.0 - VS Code Extension ✅
+- Full IDE support with autocomplete
+- Syntax highlighting and snippets
+- Run and compile commands
+
+### Version 1.3.0 - Advanced Optimizations ✅
+- Jump chain elimination
+- Dead code elimination
+- Enhanced peephole optimizations
+
+### Version 1.2.0 - Syntax Highlighting ✅
+- TextMate grammar for multiple editors
+
+### Version 1.1.0 - Enhanced Error Messages ✅
+- Rich error context and suggestions
+
+### Version 1.0.0 - File I/O Enhancements ✅
+- Binary file operations
+- Directory and path utilities
+
+### Version 0.9.0 - Lambdas ✅
+- Anonymous functions
+
+### Version 0.8.0 - Judge Statements ✅
+- Switch/match statements
+
+### Version 0.7.0 - List Comprehensions ✅
+- Concise list creation
+
+### Version 0.6.0 - File I/O ✅
+- Basic file operations
+
+### Version 0.5.0 - Exception Handling ✅
+- Risk/catch/finally system
+
+### Version 0.4.0 - Module System ✅
+- Import/module functionality
+
+### Version 0.3.0 - Bytecode Functions ✅
+- Function support in VM
+
+### Version 0.2.0 - Phantom Type ✅
+- Floating-point numbers
 - Enhanced bitwise operators
 - List comprehensions
 - Switch/match statements

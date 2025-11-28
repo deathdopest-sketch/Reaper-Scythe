@@ -1,84 +1,225 @@
 # REAPER Language - Release Notes
 
-**Version**: 0.2.0  
+**Version**: 1.7.0  
 **Release Date**: 2025-01-27  
-**Status**: Phase 1-3 Complete, Phase 4 In Progress
+**Status**: Production Ready - All Major Features Complete
 
 ---
 
-## 🎉 Major Features Completed
+## 🎉 Version 1.7.0 - Standard Library Expansion
 
-### Phase 1: Standalone Language Completion ✅
+### New Features
+- **Graveyard Standard Library**: Comprehensive utility module with 40+ functions
+  - Time utilities (get_current_time, format_time, parse_time, sleep, measure_time)
+  - Math utilities (min/max, clamp, lerp, round, floor, ceil, sqrt, pow, log, sin, cos, tan)
+  - String utilities (trim, case conversion, matching, replace, split, join, padding)
+  - Collection utilities (filter, map, reduce, find, count, reverse, sort, unique, flatten)
+  - Random utilities (random_int, random_float, random_choice, shuffle)
 
-#### Bytecode Virtual Machine
-- **High-Performance Execution**: Bytecode VM provides 10x performance improvement over interpreter
-- **Bytecode Compiler**: Compile source files to bytecode (`.reaper.bc`) for faster execution
-- **CLI Integration**: 
-  - `--compile-bc` flag to compile source to bytecode
-  - `--bytecode`/`--vm` flag to execute bytecode files
-- **Source Editability**: Bytecode does not lock language - source files remain fully editable
-- **Optimizations**: Constant folding and peephole optimizations for improved performance
-- **Security**: Rate limiting, memory management, and secure string handling
+---
 
-#### Build System
-- **Nuitka Integration**: Standalone executable compilation ready
-- **Cross-Platform**: Build scripts for Windows, Linux, and macOS
-- **Dependency Bundling**: Automatic dependency resolution and bundling
-- **Integration Tests**: Comprehensive test suite for bytecode system
+## 🎉 Version 1.6.0 - JIT Compilation Foundation
 
-### Phase 2: Necronomicon Learning System ✅
+### New Features
+- **JIT Compilation System**: Foundation for Just-In-Time compilation
+  - Execution profiling system
+  - Hot path detection
+  - Hot loop identification
+  - Hot function tracking
+  - Profile-guided optimization framework
+  - Hot loop optimization (constant folding, redundant operation removal)
+  - Integration with VM for automatic profiling
 
-#### Core Learning System
-- **Course Structure**: Complete course/lesson/challenge/quiz system
-- **Progress Tracking**: SQLite database for user progress
-- **Code Execution Engine**: Sandboxed code execution with security limits
-- **Example Course**: "Introduction to Reaper" with 3 comprehensive lessons
+---
 
-#### User Interface
-- **Text-Based TUI**: Professional interface using Rich library
-- **Graceful Fallback**: Works without Rich library (basic text mode)
-- **Features**:
-  - Main menu navigation
-  - Course browser
-  - Lesson viewer with markdown support
-  - Progress dashboard
-  - Challenge interface with code validation
-- **CLI Integration**: `--necronomicon` flag to launch learning system
+## 🎉 Version 1.5.0 - Package Manager
 
-### Phase 3: AI Assistant Implementation ✅
+### New Features
+- **REAPER Package Manager**: Complete package management system
+  - Package manifest system (`reaper.toml`)
+  - Git-based package installation (GitHub, GitLab, generic Git)
+  - Dependency resolution and installation
+  - Package discovery in `reaper_modules/` directory
+  - CLI commands: `init`, `install`, `list`, `uninstall`, `update`
+  - Integration with module loader for automatic package discovery
 
-#### Hack Benjamin (Beginner Tutor)
-- **Always Available**: No unlock requirements
-- **Beginner-Friendly**: Designed for new learners
-- **Context-Aware**: Knows current lesson and course context
-- **Hints System**: Provides hints (not full solutions) for challenges
-- **Local AI**: Ollama integration with fallback mode
-- **Privacy**: Completely anonymous - no corporate API dependencies
+### Usage
+```bash
+# Initialize a new project
+reaper package init my-project 0.1.0 "Author" "Description"
 
-#### Thanatos (Advanced Expert)
-- **Unlock System**: Requires course completion to access
-- **Advanced Security**: Expert-level penetration testing guidance
-- **Separate UI**: Dedicated interface via `--thanatos` flag
-- **Ethical Warnings**: Legal disclaimers and ethical use guidelines
-- **Local AI**: Supports larger models for better responses
+# Install a package
+reaper package install github:user/repo
 
-#### AI Integration
-- **Ollama Backend**: Full support for local Ollama models
-- **Fallback Mode**: Works without AI models installed
-- **Model Selection**: Configurable model selection
-- **Standalone Compatible**: Works in compiled executable
-- **Privacy First**: Zero external API calls, completely local
+# List installed packages
+reaper package list
+```
+
+---
+
+## 🎉 Version 1.4.0 - VS Code IDE Extension
+
+### New Features
+- **VS Code Extension**: Complete IDE support
+  - Autocomplete for keywords, built-ins, and constants
+  - Hover information and documentation
+  - Code snippets for common patterns
+  - Basic diagnostics and syntax checking
+  - Run and compile commands
+  - Task definitions for build/run
+  - Publisher: DeathDopest
+  - Copyright: © 2025 DeathAIAUS
+
+---
+
+## 🎉 Version 1.3.0 - Advanced Optimizations
+
+### New Features
+- **Bytecode Optimizations**: Enhanced compiler optimizations
+  - Jump chain elimination
+  - Dead code elimination
+  - Unreachable code removal
+  - Enhanced peephole optimizations
+
+---
+
+## 🎉 Version 1.2.0 - Syntax Highlighting
+
+### New Features
+- **TextMate Grammar**: Syntax highlighting for REAPER
+  - Support for VS Code, Sublime Text, Atom, Vim
+  - Complete keyword highlighting
+  - String, number, and comment highlighting
+  - Operator and punctuation highlighting
+
+---
+
+## 🎉 Version 1.1.0 - Enhanced Error Messages
+
+### New Features
+- **Rich Error Messages**: Comprehensive error reporting
+  - Source code context with line pointers
+  - "Did you mean?" suggestions for undefined variables
+  - Stack traces for runtime errors
+  - Structured error formatting
+  - Specific error attributes (expected/actual types, available keys, etc.)
+
+---
+
+## 🎉 Version 1.0.0 - File I/O Enhancements
+
+### New Features
+- **Enhanced File Operations**: Complete file system access
+  - Binary file support (`excavate_bytes`, `bury_bytes`)
+  - File metadata operations (`inspect`)
+  - Directory operations (`list_graves`, `create_grave`, `remove_grave`)
+  - Path manipulation (`join_paths`, `split_path`, `normalize_path`)
+  - String encoding/decoding (`encode_soul`, `decode_soul`)
+
+---
+
+## 🎉 Version 0.9.0 - Anonymous Functions/Lambdas
+
+### New Features
+- **Lambda Expressions**: Inline anonymous functions
+  - Syntax: `(params) => expression` or `(params) => { statements }`
+  - First-class functions
+  - Support for single-expression and block bodies
+
+---
+
+## 🎉 Version 0.8.0 - Switch/Match Statements
+
+### New Features
+- **Judge Statements**: Multi-way branching
+  - Syntax: `judge (expression) { case value: {...} default: {...} }`
+  - Support for block and single-statement bodies
+  - No fall-through behavior
+
+---
+
+## 🎉 Version 0.7.0 - List Comprehensions
+
+### New Features
+- **List Comprehensions**: Concise list creation
+  - Syntax: `[expr for item in iterable if condition]`
+  - Support for optional condition
+  - Works with lists, strings, and dictionaries
+
+---
+
+## 🎉 Version 0.6.0 - File I/O Operations
+
+### New Features
+- **File Operations**: Basic file I/O
+  - `excavate` function (read file)
+  - `bury` function (write file)
+  - Security checks and error handling
+  - Size limits and path validation
+
+---
+
+## 🎉 Version 0.5.0 - Exception Handling
+
+### New Features
+- **Exception System**: Complete error handling
+  - `risk` keyword (try block)
+  - `catch` keyword (catch block with optional exception type)
+  - `finally` keyword (finally block)
+  - `throw` keyword (raise exceptions)
+  - Exception type matching (including inheritance)
+  - Access to exception properties (message, line, column, filename)
+
+---
+
+## 🎉 Version 0.4.0 - Import/Module System
+
+### New Features
+- **Module System**: Complete import functionality
+  - `INFILTRATE` keyword (import)
+  - Module resolution system
+  - Namespace support
+  - Library integration (security libs)
+  - Circular dependency detection
+  - Module caching
+  - Support for `.reaper` files and Python modules
+
+---
+
+## 🎉 Version 0.3.0 - Bytecode VM Function Support
+
+### New Features
+- **Function Support in VM**: Complete bytecode function execution
+  - Compile function definitions to bytecode
+  - Function call mechanism in VM
+  - Parameter passing and return values
+  - Local variable scope
+  - Recursion support
+
+---
+
+## 🎉 Version 0.2.0 - Floating-Point Type
+
+### New Features
+- **Phantom Type**: Floating-point numbers
+  - `phantom` keyword for float type
+  - Floating-point arithmetic operations
+  - Type conversion functions (`raise_phantom`, `steal_soul` updated)
+  - Comparison operations for floats
+  - Integration with bytecode compiler and VM
 
 ---
 
 ## 🔧 Technical Improvements
 
 ### Language Core
-- **Enhanced Type System**: 7 fundamental types with explicit typing
-- **Bitwise Operators**: `wither`, `spread`, `mutate`, `invert`, `rot`
-- **New Keywords**: `INFILTRATE`, `CLOAK`, `EXPLOIT`, `BREACH`
-- **Resource Management**: Enhanced memory tracking and limits
-- **Error Handling**: Comprehensive error types with helpful messages
+- **Enhanced Type System**: 8 fundamental types (corpse, soul, phantom, crypt, grimoire, tomb, wraith, void)
+- **Bitwise Operators**: Complete bitwise operation support
+- **Control Flow**: if/otherwise, shamble, decay, soulless loops
+- **Functions**: Named functions, lambdas, closures
+- **Classes**: Object-oriented programming with methods
+- **Collections**: Arrays and dictionaries with built-in methods
+- **Resource Management**: Memory limits, recursion depth, execution timeouts
 
 ### Security Libraries
 - **8 Complete Libraries**: phantom, crypt, wraith, specter, shadow, void, zombitious, shinigami
@@ -86,8 +227,14 @@
 - **Ethical Guidelines**: All libraries include usage warnings
 
 ### Standard Library
-- **Necronomicon**: Complete learning system
-- **Graveyard**: File I/O and database operations (planned)
+- **Necronomicon**: Complete learning system with AI assistants
+- **Graveyard**: Utility functions for common operations
+
+### Developer Experience
+- **VS Code Extension**: Full IDE support
+- **Syntax Highlighting**: TextMate grammar for multiple editors
+- **Package Manager**: Git-based package installation
+- **Documentation**: Comprehensive language reference
 
 ---
 
@@ -95,13 +242,11 @@
 
 ### Updated Files
 - **README.md**: Current project status and usage instructions
-- **core/README.md**: Complete feature documentation
+- **README_GITHUB.md**: GitHub repository documentation
 - **REAPER_LANGUAGE_OVERVIEW.md**: Comprehensive language reference
-- **BUILD.md**: Build system documentation
-
-### New Documentation
-- **RELEASE_NOTES.md**: This file - comprehensive release information
-- **API Documentation**: Security library API references (in progress)
+- **FUTURE_ROADMAP.md**: Complete development roadmap
+- **core/language_spec.md**: Language specification
+- **core/grammar.md**: Formal grammar
 
 ---
 
@@ -110,31 +255,34 @@
 ### Installation
 ```bash
 # Clone repository
-git clone <repository>
-cd reaper-lang
+git clone https://github.com/deathdopest-sketch/Reaper-Scythe.git
+cd Reaper-Scythe
 
 # Install dependencies
 pip install -r requirements.txt
-pip install -r requirements-dev.txt  # For development
 ```
 
 ### Quick Start
 ```bash
 # Run a script
-python reaper_main.py script.reaper
+python -m core.reaper script.reaper
 
 # Interactive REPL
-python reaper_main.py
+python -m core.reaper
 
 # Compile to bytecode (faster)
-python reaper_main.py --compile-bc script.reaper
-python reaper_main.py --bytecode script.reaper.bc
+python -m core.reaper --compile-bc script.reaper
+python -m core.reaper --bytecode script.reaper.bc
+
+# Package management
+python -m core.reaper package init my-project
+python -m core.reaper package install github:user/repo
 
 # Launch learning system
-python reaper_main.py --necronomicon
+python -m core.reaper --necronomicon
 
 # Launch advanced AI
-python reaper_main.py --thanatos
+python -m core.reaper --thanatos
 ```
 
 ---
@@ -145,9 +293,8 @@ python reaper_main.py --thanatos
 - **Core Language Tests**: `core/test_runner.py`
 - **Bytecode Integration**: `tests/test_bytecode_integration.py`
 - **Build Verification**: `tests/test_build_verification.py`
-- **End-to-End Integration**: `tests/test_e2e_integration.py` ⭐ NEW
+- **End-to-End Integration**: `tests/test_e2e_integration.py`
 - **Security Libraries**: Individual test suites in each library
-- **E2E Tests**: `test_bot/e2e_test_bot.py`
 
 ### Running Tests
 ```bash
@@ -157,11 +304,8 @@ cd core && python test_runner.py
 # Bytecode tests
 python -m pytest tests/test_bytecode_integration.py
 
-# End-to-end integration tests (recommended)
+# End-to-end integration tests
 python tests/test_e2e_integration.py
-
-# E2E tests
-python test_bot/run_tests.py
 ```
 
 ---
@@ -176,105 +320,156 @@ python test_bot/run_tests.py
 
 ### Security Features
 - **Resource Limits**: Memory, recursion, and execution timeouts
-- **Input Validation**: All user input validated and sanitized
-- **Bounds Checking**: Array/string operations bounds-checked
-- **Type Safety**: Static typing prevents type-related vulnerabilities
-- **Sandboxing**: Code execution in isolated environments
+- **Rate Limiting**: Prevents resource exhaustion
+- **Input Validation**: Comprehensive type checking
+- **Error Handling**: Robust exception system
+- **File I/O Security**: Path validation and size limits
 
 ---
 
-## ⚖️ Legal & Ethical
+## 📦 Package Management
 
-### Intended Use
+### Creating a Package
+```bash
+# Initialize project
+reaper package init my-package 0.1.0 "Author" "Description"
+
+# This creates reaper.toml with:
+[package]
+name = "my-package"
+version = "0.1.0"
+author = "Author"
+description = "Description"
+```
+
+### Installing Packages
+```bash
+# From GitHub
+reaper package install github:user/repo
+
+# From GitLab
+reaper package install gitlab:user/repo
+
+# From generic Git
+reaper package install git+https://example.com/repo.git
+```
+
+### Using Packages
+```reaper
+// In your REAPER code
+infiltrate my_package;
+
+// Use functions from the package
+my_package.some_function();
+```
+
+---
+
+## 🎓 Learning Resources
+
+### Necronomicon Learning System
+- Interactive courses and lessons
+- Code challenges and quizzes
+- Progress tracking
+- AI tutors (Hack Benjamin and Thanatos)
+
+### Documentation
+- **Language Overview**: `REAPER_LANGUAGE_OVERVIEW.md`
+- **Language Spec**: `core/language_spec.md`
+- **Grammar**: `core/grammar.md`
+- **Examples**: `core/examples/`
+
+---
+
+## 🔮 Future Enhancements
+
+### Planned Features
+- Native code generation for JIT compilation
+- Additional standard library modules
+- More Necronomicon courses
+- Enhanced VS Code extension features
+- Package registry for easier discovery
+
+---
+
+## ⚖️ Ethical Use
+
+This language is a tool. Like any tool, it can be used for good or ill.
+
+**Intended for:**
 - Educational purposes
 - Ethical security research
 - Authorized penetration testing
-- Security tool development
-- Learning cybersecurity concepts
+- Learning cybersecurity
+- Digital independence
 
-### Prohibited Use
-- Unauthorized access
+**Not for:**
+- Unauthorized access to systems
 - Malicious activities
 - Illegal operations
-- Harmful purposes
+- Harming others
 
-All security libraries include ethical use warnings and require proper authorization.
-
----
-
-## 🐛 Known Issues
-
-**No known issues currently reported.** See `ISSUES_LOG.md` for issue tracking.
-
-### Previous Limitations (Resolved)
-
-✅ **Bytecode VM Function Support**: Previously limited, now fully supported as of v1.0.0  
-✅ **All language features**: Now work in both interpreter and bytecode modes
+**Always:**
+- Obtain proper authorization
+- Follow legal guidelines
+- Respect privacy
+- Use responsibly
 
 ---
 
-## 🔮 Future Roadmap
+## 📝 Changelog Summary
 
-### Version 1.0 ✅ (Completed)
-- ✅ Full bytecode VM support for user-defined functions
-- ✅ Floating-point type (`phantom`)
-- ✅ Import/module system
-- ✅ Exception handling (`risk`/`catch`)
-- ✅ File I/O operations (with binary, metadata, directories, paths)
-- ✅ List comprehensions
-- ✅ Switch/match statements
-- ✅ Anonymous functions/lambdas
-- ✅ Enhanced error messages
+### Version 1.7.0
+- Added Graveyard standard library with 40+ utility functions
 
-### Version 2.0 (Future)
-- JIT compilation
-- Standard library expansion
-- Package manager
-- IDE plugins
-- Syntax highlighting
+### Version 1.6.0
+- Implemented JIT compilation foundation with profiling
 
----
+### Version 1.5.0
+- Implemented complete package manager system
 
-## 📊 Performance
+### Version 1.4.0
+- Released VS Code extension with full IDE support
 
-### Benchmarks
-- **Interpreter**: Baseline performance
-- **Bytecode VM**: ~10x faster than interpreter
-- **Memory Usage**: Bounded by resource limits
-- **Startup Time**: < 1 second for most operations
+### Version 1.3.0
+- Enhanced bytecode optimizations
 
-### Resource Limits
-- **String Length**: 1MB per string
-- **Array Size**: 10,000 elements
-- **Dictionary Size**: 10,000 key-value pairs
-- **Recursion Depth**: 1,000 calls
-- **Execution Timeout**: 30 seconds
+### Version 1.2.0
+- Added syntax highlighting support
 
----
+### Version 1.1.0
+- Enhanced error messages with context and suggestions
 
-## 🤝 Contributing
+### Version 1.0.0
+- Enhanced file I/O operations
 
-Contributions welcome! See the project repository for contribution guidelines.
+### Version 0.9.0
+- Added lambda expressions
 
----
+### Version 0.8.0
+- Added judge (switch/match) statements
 
-## 📄 License
+### Version 0.7.0
+- Added list comprehensions
 
-MIT License - See `core/LICENSE` for details.
+### Version 0.6.0
+- Added basic file I/O operations
 
----
+### Version 0.5.0
+- Implemented exception handling system
 
-## 🙏 Acknowledgments
+### Version 0.4.0
+- Implemented import/module system
 
-- Built with Python 3.8+ compatibility
-- Designed for educational and ethical security research
-- Inspired by the zombie/death theme in programming
+### Version 0.3.0
+- Added bytecode VM function support
+
+### Version 0.2.0
+- Added phantom (float) type
 
 ---
 
 **The dead have spoken. The REAPER language rises.** ☠️
 
-*For detailed language documentation, see `REAPER_LANGUAGE_OVERVIEW.md`*  
-*For build instructions, see `BUILD.md`*  
-*For project status, see `PROJECT_STATE.md`*
-
+**Publisher**: DeathDopest  
+**© 2025 DeathAIAUS. All rights reserved.**
