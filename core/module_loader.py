@@ -335,12 +335,7 @@ class ReaperModuleLoader:
                         # For package manager: check if subdir is a package and contains the module
                         # (e.g., reaper_modules/my_package/utils.reaper)
                         if search_path.name == "reaper_modules":
-                            # This is a package directory, check for module inside
-                            module_file = subdir / f"{module_name}.reaper"
-                            if module_file.exists() and module_file.is_file():
-                                return module_file
-                            
-                            # Also check for __init__.reaper in package
+                            # Also check for __init__.reaper in package (package name matches module)
                             init_file = subdir / "__init__.reaper"
                             if init_file.exists() and module_name == subdir.name:
                                 return init_file
