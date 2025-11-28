@@ -1025,4 +1025,4 @@ REAPER is a unique, powerful, and thematic programming language designed for sec
 ---
 
 *Last Updated: 2025-01-27*
-*Version: 0.2.0*
+*Version: 1.7.0*
