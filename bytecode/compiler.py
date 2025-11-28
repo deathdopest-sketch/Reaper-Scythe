@@ -33,6 +33,8 @@ class BytecodeCompiler:
         
         # Run optimization passes
         self._peephole_optimize()
+        self._optimize_jumps()
+        self._eliminate_dead_code()
         
         return self.program
     
@@ -733,6 +735,101 @@ class BytecodeCompiler:
             optimized.append(cur)
             i += 1
 
+        self.program.instructions = optimized
+    
+    def _optimize_jumps(self) -> None:
+        """Optimize jump instructions by eliminating chains and unreachable code."""
+        ins = self.program.instructions
+        if not ins:
+            return
+        
+        # Build jump target map
+        jump_targets = set()
+        for i, instr in enumerate(ins):
+            if instr.opcode in (OpCode.JMP, OpCode.JMP_IF, OpCode.JMP_IF_NOT):
+                if isinstance(instr.operand, int):
+                    jump_targets.add(instr.operand)
+        
+        # Remove unreachable code after unconditional jumps
+        optimized: List[BytecodeInstruction] = []
+        i = 0
+        while i < len(ins):
+            cur = ins[i]
+            
+            # If this is an unconditional jump, mark everything until target as unreachable
+            if cur.opcode == OpCode.JMP and isinstance(cur.operand, int):
+                target = cur.operand
+                optimized.append(cur)
+                
+                # Skip instructions until target (they're unreachable)
+                i += 1
+                while i < len(ins) and i < target:
+                    # Only keep labels/jumps that might be targets
+                    if i in jump_targets:
+                        optimized.append(ins[i])
+                    i += 1
+                continue
+            
+            # Eliminate jump chains: JMP to JMP -> direct jump
+            if cur.opcode == OpCode.JMP and isinstance(cur.operand, int):
+                target = cur.operand
+                # Follow jump chain
+                visited = set()
+                while target < len(ins) and target not in visited:
+                    visited.add(target)
+                    target_instr = ins[target]
+                    if target_instr.opcode == OpCode.JMP and isinstance(target_instr.operand, int):
+                        target = target_instr.operand
+                    else:
+                        break
+                
+                # If we found a better target, use it
+                if target != cur.operand:
+                    optimized.append(BytecodeInstruction(OpCode.JMP, target, cur.line, cur.column))
+                else:
+                    optimized.append(cur)
+            else:
+                optimized.append(cur)
+            
+            i += 1
+        
+        self.program.instructions = optimized
+    
+    def _eliminate_dead_code(self) -> None:
+        """Eliminate dead code (unreachable instructions)."""
+        ins = self.program.instructions
+        if not ins:
+            return
+        
+        # Mark all reachable instructions
+        reachable = set()
+        worklist = [0]  # Start from first instruction
+        
+        while worklist:
+            i = worklist.pop()
+            if i >= len(ins) or i in reachable:
+                continue
+            
+            reachable.add(i)
+            instr = ins[i]
+            
+            # Add next instruction if not a terminating instruction
+            if instr.opcode not in (OpCode.JMP, OpCode.RETURN, OpCode.HALT):
+                if i + 1 < len(ins):
+                    worklist.append(i + 1)
+            
+            # Add jump targets
+            if instr.opcode in (OpCode.JMP, OpCode.JMP_IF, OpCode.JMP_IF_NOT):
+                if isinstance(instr.operand, int):
+                    worklist.append(instr.operand)
+            
+            # For conditional jumps, also add fall-through
+            if instr.opcode == OpCode.JMP_IF or instr.opcode == OpCode.JMP_IF_NOT:
+                if i + 1 < len(ins):
+                    worklist.append(i + 1)
+        
+        # Keep only reachable instructions
+        optimized = [ins[i] for i in sorted(reachable)]
         self.program.instructions = optimized
 
     def _literal_value(self, node: ASTNode) -> Union[int, float]:
