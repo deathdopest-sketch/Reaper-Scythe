@@ -204,35 +204,27 @@ All security libraries include ethical use warnings and require proper authoriza
 
 ## 🐛 Known Issues
 
-### Bytecode VM Limitations
+**No known issues currently reported.** See `ISSUES_LOG.md` for issue tracking.
 
-The bytecode VM has limited support for user-defined functions. Scripts with user-defined functions should use interpreter mode (default) instead of bytecode execution mode.
+### Previous Limitations (Resolved)
 
-**Workaround**: Run scripts without the `--bytecode` flag:
-```bash
-# Recommended: Use interpreter mode (full feature support)
-python reaper_main.py script.reaper
-
-# Limited: Bytecode mode (may not work with user-defined functions)
-python reaper_main.py --bytecode script.reaper.bc
-```
-
-See `BYTECODE_LIMITATIONS.md` for detailed information.
-
-**Other Issues**: None currently reported. See `ISSUES_LOG.md` for issue tracking.
+✅ **Bytecode VM Function Support**: Previously limited, now fully supported as of v1.0.0  
+✅ **All language features**: Now work in both interpreter and bytecode modes
 
 ---
 
 ## 🔮 Future Roadmap
 
-### Version 1.0 (Planned)
-- Full bytecode VM support for user-defined functions
-- Floating-point type (`phantom`)
-- Import/module system
-- Exception handling (`risk`/`catch`)
-- File I/O operations
-- List comprehensions
-- Switch/match statements
+### Version 1.0 ✅ (Completed)
+- ✅ Full bytecode VM support for user-defined functions
+- ✅ Floating-point type (`phantom`)
+- ✅ Import/module system
+- ✅ Exception handling (`risk`/`catch`)
+- ✅ File I/O operations (with binary, metadata, directories, paths)
+- ✅ List comprehensions
+- ✅ Switch/match statements
+- ✅ Anonymous functions/lambdas
+- ✅ Enhanced error messages
 
 ### Version 2.0 (Future)
 - JIT compilation
