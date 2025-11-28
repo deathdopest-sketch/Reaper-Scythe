@@ -531,6 +531,28 @@ class IfNode(ASTNode):
         return f"IfNode({len(self.elif_conditions)} elifs, {self.filename}:{self.line}:{self.column})"
 
 
+class LambdaNode(ASTNode):
+    """Represents an anonymous function/lambda: (params) => expression or (params) => { body }."""
+    
+    def __init__(
+        self,
+        params: List[Tuple[str, str, Optional[ASTNode]]],  # List of (name, type, default) tuples
+        body: ASTNode,  # Expression or block
+        line: int = 0,
+        column: int = 0,
+        filename: str = "<unknown>"
+    ):
+        super().__init__(line, column, filename)
+        self.params = params
+        self.body = body
+    
+    def accept(self, visitor):
+        return visitor.visit_lambda_node(self)
+    
+    def __repr__(self) -> str:
+        return f"LambdaNode({len(self.params)} params, {self.filename}:{self.line}:{self.column})"
+
+
 class ShambleNode(ASTNode):
     """Represents a shamble (for) loop."""
     

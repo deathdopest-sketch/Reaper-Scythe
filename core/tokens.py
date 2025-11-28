@@ -98,7 +98,8 @@ class TokenType(Enum):
     SEMICOLON = "SEMICOLON"
     COMMA = "COMMA"
     DOT = "DOT"
-    ARROW = "ARROW"
+    ARROW = "ARROW"  # -> for return types
+    LAMBDA_ARROW = "LAMBDA_ARROW"  # => for lambdas
     COLON = "COLON"
     
     # Literals (5) - Added hex and binary literals
@@ -267,6 +268,7 @@ DELIMITERS = {
     ",": TokenType.COMMA,
     ".": TokenType.DOT,
     "->": TokenType.ARROW,
+    "=>": TokenType.LAMBDA_ARROW,  # Lambda/anonymous function arrow
     ":": TokenType.COLON,
 }
 

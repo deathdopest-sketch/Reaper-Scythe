@@ -174,7 +174,13 @@ class Parser:
                       TokenType.VOID, TokenType.ETERNAL, TokenType.PHANTOM, TokenType.SPECTER, TokenType.SHADOW):
             return self._parse_variable_declaration()
         elif self._match(TokenType.INFECT):
-            return self._parse_function_definition()
+            # Check if this is a variable declaration (infect name = ...) or function definition (infect name(...))
+            if self._check(TokenType.IDENTIFIER) and self._peek_next() == TokenType.ASSIGN:
+                # infect x = ... (variable declaration with function type)
+                return self._parse_variable_declaration()
+            else:
+                # infect name(...) (function definition)
+                return self._parse_function_definition()
         elif self._match(TokenType.TOMB):
             # Check if this is a variable declaration or class definition
             if self._check(TokenType.IDENTIFIER) and self._peek_next() == TokenType.ASSIGN:
@@ -880,9 +886,94 @@ class Parser:
             return VoidNode(token.line, token.column, token.filename)
         
         elif self._match(TokenType.LPAREN):
-            expr = self._parse_expression()
-            self._consume(TokenType.RPAREN, "Expected ')' after expression")
-            return expr
+            # Check if this is a lambda: (params) => expression
+            # Use lookahead to check for lambda arrow
+            saved_current = self.current
+            is_lambda = False
+            
+            # Try to parse parameter list to see if it's a lambda
+            try:
+                params = []
+                
+                # Parse parameter list (can be empty)
+                if not self._check(TokenType.RPAREN):
+                    # Parse first parameter
+                    if self._check(TokenType.IDENTIFIER):
+                        param_token = self._advance()
+                        param_name = param_token.value
+                        param_type = "unknown"
+                        default_value = None
+                        
+                        # Optional type annotation
+                        if self._match(TokenType.COLON):
+                            if self._check(TokenType.CORPSE, TokenType.SOUL, TokenType.CRYPT,
+                                         TokenType.GRIMOIRE, TokenType.WRAITH, TokenType.PHANTOM):
+                                type_token = self._advance()
+                                param_type = type_token.type.value.lower()
+                        
+                        # Optional default value
+                        if self._match(TokenType.ASSIGN):
+                            default_value = self._parse_expression()
+                        
+                        params.append((param_name, param_type, default_value))
+                        
+                        # Parse more parameters
+                        while self._match(TokenType.COMMA):
+                            if self._check(TokenType.IDENTIFIER):
+                                param_token = self._advance()
+                                param_name = param_token.value
+                                param_type = "unknown"
+                                default_value = None
+                                
+                                # Optional type annotation
+                                if self._match(TokenType.COLON):
+                                    if self._check(TokenType.CORPSE, TokenType.SOUL, TokenType.CRYPT,
+                                                 TokenType.GRIMOIRE, TokenType.WRAITH, TokenType.PHANTOM):
+                                        type_token = self._advance()
+                                        param_type = type_token.type.value.lower()
+                                
+                                # Optional default value
+                                if self._match(TokenType.ASSIGN):
+                                    default_value = self._parse_expression()
+                                
+                                params.append((param_name, param_type, default_value))
+                            else:
+                                break
+                
+                # Check if next is lambda arrow
+                if self._match(TokenType.RPAREN):
+                    if self._check(TokenType.LAMBDA_ARROW):
+                        is_lambda = True
+                    else:
+                        # Not a lambda - restore position
+                        self.current = saved_current
+                else:
+                    # Not a lambda - restore position
+                    self.current = saved_current
+                    
+            except:
+                # If anything goes wrong, restore and parse as regular expression
+                self.current = saved_current
+                is_lambda = False
+            
+            if is_lambda:
+                # It's a lambda!
+                self._match(TokenType.LAMBDA_ARROW)  # Consume the =>
+                start_token = self._previous()
+                
+                # Parse lambda body (expression or block)
+                if self._check(TokenType.LBRACE):
+                    body = self._parse_block()
+                else:
+                    # Single expression
+                    body = self._parse_expression()
+                
+                return LambdaNode(params, body, start_token.line, start_token.column, start_token.filename)
+            else:
+                # Regular parenthesized expression
+                expr = self._parse_expression()
+                self._consume(TokenType.RPAREN, "Expected ')' after expression")
+                return expr
         
         elif self._match(TokenType.LBRACKET):
             return self._parse_array_literal()

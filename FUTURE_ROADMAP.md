@@ -1,6 +1,6 @@
 # REAPER Language - Future Development Roadmap
 
-**Current Version**: 0.8.0  
+**Current Version**: 0.9.0  
 **Last Updated**: 2025-01-27
 
 ---
@@ -122,10 +122,10 @@
 **Impact**: Medium - Control flow enhancement  
 **Effort**: Completed (2 hours)
 
-#### Anonymous Functions/Lambdas
-**Status**: 🔄 Planned  
+#### Anonymous Functions/Lambdas ✅
+**Status**: ✅ **COMPLETE**  
 **Impact**: Medium - Functional programming  
-**Effort**: Medium (4-6 hours)
+**Effort**: Completed (3 hours)
 
 ---
 

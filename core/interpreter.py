@@ -934,6 +934,12 @@ class Interpreter:
     # Function Node Visitors
     # ============================================================================
     
+    def visit_lambda_node(self, node: LambdaNode) -> Any:
+        """Visit lambda/anonymous function node."""
+        # Lambdas are first-class values - return them as-is
+        # They'll be called like regular functions
+        return node
+    
     def visit_infect_node(self, node: InfectNode) -> Any:
         """Visit function definition node."""
         # Store function in current environment
@@ -953,7 +959,7 @@ class Interpreter:
             func_value, _ = current_env.get(node.function_name, node.line, node.column)
             
             # If it's a Python callable wrapper, call it directly
-            if callable(func_value) and not isinstance(func_value, (InfectNode, TombNode)):
+            if callable(func_value) and not isinstance(func_value, (InfectNode, LambdaNode, TombNode)):
                 converted_args = [self._convert_reaper_to_python(arg) for arg in arguments]
                 try:
                     result = func_value(*converted_args)
@@ -963,6 +969,9 @@ class Interpreter:
                         f"Error calling '{node.function_name}': {str(e)}",
                         node.line, node.column, node.filename
                     )
+            # If it's a lambda or function node, call it directly
+            elif isinstance(func_value, (InfectNode, LambdaNode)):
+                return self._call_function(func_value, arguments, node.line, node.column)
         except ReaperRuntimeError:
             # Function not found in environment, try built-in
             pass
@@ -1540,8 +1549,8 @@ class Interpreter:
         func, _ = self._get_current_environment().get(name, line, column)
         return self._call_function(func, arguments, line, column)
     
-    def _call_function(self, func: InfectNode, arguments: List[Any], line: int, column: int) -> Any:
-        """Call a user-defined function."""
+    def _call_function(self, func: Union[InfectNode, LambdaNode], arguments: List[Any], line: int, column: int) -> Any:
+        """Call a user-defined function or lambda."""
         self._check_recursion_limit()
         self.recursion_depth += 1
         
@@ -1567,7 +1576,13 @@ class Interpreter:
             
             # Execute function body
             try:
-                self._execute(func.body)
+                result = self._execute(func.body)
+                
+                # For lambdas with single expressions, return the expression value
+                # For blocks, only return if there's an explicit return statement
+                if isinstance(func, LambdaNode) and not isinstance(func.body, BlockNode):
+                    return result
+                
                 return None  # No explicit return
             except ReaperReturn as ret:
                 return ret.value

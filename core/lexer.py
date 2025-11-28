@@ -578,6 +578,9 @@ class Lexer:
         elif char == '-' and self._peek() == '>':
             self._advance()  # consume '>'
             self._add_token(TokenType.ARROW)
+        elif char == '=' and self._peek() == '>':
+            self._advance()  # consume '>'
+            self._add_token(TokenType.LAMBDA_ARROW)
         else:
             # Single character operator
             token_type = get_operator_token_type(char)
