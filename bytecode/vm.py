@@ -9,6 +9,7 @@ import sys
 import time
 from typing import Any, Dict, List, Optional, Callable
 from .instructions import OpCode, BytecodeInstruction, BytecodeProgram
+from .jit import JITCompiler, ProfileGuidedOptimizer
 from core.reaper_error import (
     ReaperRuntimeError, ReaperTypeError, ReaperMemoryError,
     ReaperIndexError, ReaperKeyError, ReaperZeroDivisionError
@@ -111,6 +112,10 @@ class ReaperVM:
         
         # Security features
         self.secure_strings: List[SecureString] = []
+        
+        # JIT compilation
+        self.jit_compiler = JITCompiler(enable_jit=True)
+        self.use_jit = True
         
         # Initialize built-in functions
         self._initialize_builtins()
@@ -343,6 +348,10 @@ class ReaperVM:
                     raise ReaperRuntimeError("CALL requires function name as operand")
                 
                 func_name = operand
+                
+                # Record function call for JIT profiling
+                if self.use_jit:
+                    self.jit_compiler.record_function_call(func_name)
                 
                 # Check if it's a bytecode function
                 if func_name in self.program.functions:
