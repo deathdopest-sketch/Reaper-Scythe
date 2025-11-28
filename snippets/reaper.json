@@ -1,0 +1,134 @@
+{
+  "Function Definition": {
+    "prefix": "infect",
+    "body": [
+      "infect ${1:FunctionName}(${2:params}) -> ${3:returnType} {",
+      "    $0",
+      "}"
+    ],
+    "description": "Function definition"
+  },
+  "If Statement": {
+    "prefix": "if",
+    "body": [
+      "if (${1:condition}) {",
+      "    $0",
+      "} otherwise {",
+      "    "
+      "}"
+    ],
+    "description": "If-otherwise statement"
+  },
+  "For Loop (shamble)": {
+    "prefix": "shamble",
+    "body": [
+      "shamble ${1:i} from ${2:start} to ${3:end} {",
+      "    $0",
+      "}"
+    ],
+    "description": "For loop (shamble)"
+  },
+  "For Each Loop (decay)": {
+    "prefix": "decay",
+    "body": [
+      "decay ${1:item} in ${2:collection} {",
+      "    $0",
+      "}"
+    ],
+    "description": "For each loop (decay)"
+  },
+  "While Loop (soulless)": {
+    "prefix": "soulless",
+    "body": [
+      "soulless {",
+      "    $0",
+      "}"
+    ],
+    "description": "Infinite while loop (soulless)"
+  },
+  "Class Definition": {
+    "prefix": "tomb",
+    "body": [
+      "tomb ${1:ClassName} {",
+      "    $0",
+      "}"
+    ],
+    "description": "Class definition"
+  },
+  "Try-Catch (risk)": {
+    "prefix": "risk",
+    "body": [
+      "risk {",
+      "    $1",
+      "} catch (${2:exception}) {",
+      "    $3",
+      "} finally {",
+      "    $4",
+      "}"
+    ],
+    "description": "Exception handling (risk-catch-finally)"
+  },
+  "Switch Statement (judge)": {
+    "prefix": "judge",
+    "body": [
+      "judge (${1:expression}) {",
+      "    case ${2:value}:",
+      "        $3",
+      "        break;",
+      "    default:",
+      "        $4",
+      "}"
+    ],
+    "description": "Switch/match statement (judge)"
+  },
+  "Lambda Function": {
+    "prefix": "lambda",
+    "body": [
+      "(${1:params}) => ${2:expression}"
+    ],
+    "description": "Anonymous function (lambda)"
+  },
+  "List Comprehension": {
+    "prefix": "comprehension",
+    "body": [
+      "[${1:expr} for ${2:item} in ${3:iterable} if ${4:condition}]"
+    ],
+    "description": "List comprehension"
+  },
+  "Variable Declaration": {
+    "prefix": "var",
+    "body": [
+      "${1:corpse} ${2:name} = ${3:value};"
+    ],
+    "description": "Variable declaration"
+  },
+  "Print Statement": {
+    "prefix": "harvest",
+    "body": [
+      "harvest ${1:expression};"
+    ],
+    "description": "Print statement (harvest)"
+  },
+  "Return Statement": {
+    "prefix": "reap",
+    "body": [
+      "reap ${1:value};"
+    ],
+    "description": "Return statement (reap)"
+  },
+  "Import Statement": {
+    "prefix": "infiltrate",
+    "body": [
+      "infiltrate ${1:module};"
+    ],
+    "description": "Import module (infiltrate)"
+  },
+  "Import Specific": {
+    "prefix": "infiltrate-from",
+    "body": [
+      "infiltrate ${1:symbol1}, ${2:symbol2} from ${3:module};"
+    ],
+    "description": "Import specific symbols"
+  }
+}
+

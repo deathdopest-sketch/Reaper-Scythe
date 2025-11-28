@@ -86,6 +86,12 @@ logs/
 .DS_Store
 Thumbs.db
 
+# Node/TypeScript
+node_modules/
+out/
+*.vsix
+.vscode-test/
+
 # Python
 __pycache__/
 *.py[cod]

@@ -1,6 +1,6 @@
 # REAPER Language - Future Development Roadmap
 
-**Current Version**: 1.3.0  
+**Current Version**: 1.4.0  
 **Last Updated**: 2025-01-27
 
 ---
@@ -157,10 +157,19 @@
 **Impact**: High - Ecosystem growth  
 **Effort**: Very High (30+ hours)
 
-#### IDE Plugins
-**Status**: 🔄 Future  
+#### IDE Plugins ✅
+**Status**: ✅ **COMPLETE**  
 **Impact**: Medium - Developer experience  
-**Effort**: High (15-20 hours)
+**Effort**: Completed (4 hours)
+
+**Implemented:**
+- ✅ VS Code extension with full language support
+- ✅ Autocomplete for keywords, built-ins, and constants
+- ✅ Hover information and documentation
+- ✅ Code snippets for common patterns
+- ✅ Basic diagnostics and syntax checking
+- ✅ Run and compile commands
+- ✅ Task definitions for build/run
 
 #### Syntax Highlighting ✅
 **Status**: ✅ **COMPLETE**  
