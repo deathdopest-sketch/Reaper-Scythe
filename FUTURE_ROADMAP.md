@@ -1,6 +1,6 @@
 # REAPER Language - Future Development Roadmap
 
-**Current Version**: 1.0.0  
+**Current Version**: 1.1.0  
 **Last Updated**: 2025-01-27
 
 ---

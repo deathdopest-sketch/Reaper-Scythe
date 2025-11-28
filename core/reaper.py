@@ -27,10 +27,50 @@ from .parser import parse
 from .interpreter import Interpreter
 from .environment import Environment
 from .reaper_error import (
-    ReaperSyntaxError, ReaperRuntimeError, ReaperTypeError,
+    ReaperError, ReaperSyntaxError, ReaperRuntimeError, ReaperTypeError,
     ReaperRecursionError, ReaperMemoryError, ReaperIndexError,
     ReaperKeyError, ReaperZeroDivisionError, format_error_with_suggestion
 )
+
+
+def _format_error_message(error_type: str, error: ReaperError, source_lines: Optional[List[str]] = None) -> str:
+    """
+    Format an error message with enhanced context.
+    
+    Args:
+        error_type: Type of error (e.g., "Syntax Error")
+        error: The error object
+        source_lines: Source code lines for context
+        
+    Returns:
+        Formatted error message
+    """
+    lines = []
+    lines.append(f"=== {error_type} ===")
+    
+    # Get available names for suggestions (if runtime error)
+    available_names = None
+    if isinstance(error, ReaperRuntimeError) and hasattr(error, 'message'):
+        error_str = error.message
+        if "Available names:" in error_str:
+            try:
+                names_part = error_str.split("Available names:")[1].strip()
+                available_names = [n.strip() for n in names_part.split(",")]
+            except:
+                pass
+    
+    # Use the error's format_error method
+    formatted = error.format_error(source_lines)
+    
+    # Add suggestions for undefined variables
+    if isinstance(error, ReaperRuntimeError) and "undefined" in error.message.lower():
+        if available_names:
+            formatted = format_error_with_suggestion(error, source_lines, available_names)
+    
+    lines.append(formatted)
+    lines.append("=" * (len(error_type) + 8))
+    
+    return "\n".join(lines)
 
 
 class ReaperREPL:
@@ -261,21 +301,21 @@ Examples:
             self.interpreter.interpret(program)
             
         except ReaperSyntaxError as e:
-            safe_print(f"Syntax Error: {e}", file=sys.stderr)
+            safe_print(_format_error_message("Syntax Error", e, code.split('\n')), file=sys.stderr)
         except ReaperRuntimeError as e:
-            safe_print(f"Runtime Error: {e}", file=sys.stderr)
+            safe_print(_format_error_message("Runtime Error", e, code.split('\n')), file=sys.stderr)
         except ReaperTypeError as e:
-            safe_print(f"Type Error: {e}", file=sys.stderr)
+            safe_print(_format_error_message("Type Error", e, code.split('\n')), file=sys.stderr)
         except ReaperRecursionError as e:
-            safe_print(f"Recursion Error: {e}", file=sys.stderr)
+            safe_print(_format_error_message("Recursion Error", e, code.split('\n')), file=sys.stderr)
         except ReaperMemoryError as e:
-            safe_print(f"Memory Error: {e}", file=sys.stderr)
+            safe_print(_format_error_message("Memory Error", e, code.split('\n')), file=sys.stderr)
         except ReaperIndexError as e:
-            safe_print(f"Index Error: {e}", file=sys.stderr)
+            safe_print(_format_error_message("Index Error", e, code.split('\n')), file=sys.stderr)
         except ReaperKeyError as e:
-            safe_print(f"Key Error: {e}", file=sys.stderr)
+            safe_print(_format_error_message("Key Error", e, code.split('\n')), file=sys.stderr)
         except ReaperZeroDivisionError as e:
-            safe_print(f"Division by Zero: {e}", file=sys.stderr)
+            safe_print(_format_error_message("Division by Zero", e, code.split('\n')), file=sys.stderr)
         except Exception as e:
             safe_print(f"Unexpected Error: {e}", file=sys.stderr)
     
@@ -545,28 +585,69 @@ def run_file(filename: str, args: List[str], use_bytecode: bool = False) -> int:
         safe_print(f"Error: File '{filename}' contains invalid UTF-8.")
         return 1
     except ReaperSyntaxError as e:
-        safe_print(f"Syntax Error: {e}", file=sys.stderr)
+        # Load source lines for context
+        try:
+            with open(filename, 'r', encoding='utf-8') as f:
+                source_lines = f.readlines()
+        except:
+            source_lines = None
+        safe_print(_format_error_message("Syntax Error", e, source_lines), file=sys.stderr)
         return 1
     except ReaperRuntimeError as e:
-        safe_print(f"Runtime Error: {e}", file=sys.stderr)
+        try:
+            with open(filename, 'r', encoding='utf-8') as f:
+                source_lines = f.readlines()
+        except:
+            source_lines = None
+        safe_print(_format_error_message("Runtime Error", e, source_lines), file=sys.stderr)
         return 2
     except ReaperTypeError as e:
-        safe_print(f"Type Error: {e}", file=sys.stderr)
+        try:
+            with open(filename, 'r', encoding='utf-8') as f:
+                source_lines = f.readlines()
+        except:
+            source_lines = None
+        safe_print(_format_error_message("Type Error", e, source_lines), file=sys.stderr)
         return 2
     except ReaperRecursionError as e:
-        safe_print(f"Recursion Error: {e}", file=sys.stderr)
+        try:
+            with open(filename, 'r', encoding='utf-8') as f:
+                source_lines = f.readlines()
+        except:
+            source_lines = None
+        safe_print(_format_error_message("Recursion Error", e, source_lines), file=sys.stderr)
         return 2
     except ReaperMemoryError as e:
-        safe_print(f"Memory Error: {e}", file=sys.stderr)
+        try:
+            with open(filename, 'r', encoding='utf-8') as f:
+                source_lines = f.readlines()
+        except:
+            source_lines = None
+        safe_print(_format_error_message("Memory Error", e, source_lines), file=sys.stderr)
         return 2
     except ReaperIndexError as e:
-        safe_print(f"Index Error: {e}", file=sys.stderr)
+        try:
+            with open(filename, 'r', encoding='utf-8') as f:
+                source_lines = f.readlines()
+        except:
+            source_lines = None
+        safe_print(_format_error_message("Index Error", e, source_lines), file=sys.stderr)
         return 2
     except ReaperKeyError as e:
-        safe_print(f"Key Error: {e}", file=sys.stderr)
+        try:
+            with open(filename, 'r', encoding='utf-8') as f:
+                source_lines = f.readlines()
+        except:
+            source_lines = None
+        safe_print(_format_error_message("Key Error", e, source_lines), file=sys.stderr)
         return 2
     except ReaperZeroDivisionError as e:
-        safe_print(f"Division by Zero: {e}", file=sys.stderr)
+        try:
+            with open(filename, 'r', encoding='utf-8') as f:
+                source_lines = f.readlines()
+        except:
+            source_lines = None
+        safe_print(_format_error_message("Division by Zero", e, source_lines), file=sys.stderr)
         return 2
     except Exception as e:
         safe_print(f"Unexpected Error: {e}")
