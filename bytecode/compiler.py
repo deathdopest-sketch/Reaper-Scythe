@@ -367,7 +367,9 @@ class BytecodeCompiler:
         builtin_functions = ['harvest', 'curse', 'haunt', 'infect', 'raise', 'reap', 
                            'flee', 'persist', 'rest', 'lesser', 'greater', 'risen', 'dead', 'void',
                            'summon', 'final_rest', 'absolute', 'raise_corpse', 'steal_soul', 
-                           'raise_phantom', 'excavate', 'bury']
+                           'raise_phantom', 'excavate', 'bury', 'excavate_bytes', 'bury_bytes',
+                           'inspect', 'list_graves', 'create_grave', 'remove_grave',
+                           'join_paths', 'split_path', 'normalize_path', 'encode_soul', 'decode_soul']
         if node.function_name in builtin_functions:
             self.program.add_instruction(BytecodeInstruction(OpCode.CALL_BUILTIN, node.function_name))
         else:

@@ -442,6 +442,17 @@ class ReaperVM:
                     'void': 0,
                     'excavate': 1,
                     'bury': 2,
+                    'excavate_bytes': 1,
+                    'bury_bytes': 2,
+                    'inspect': 1,
+                    'list_graves': 0,  # Can take 0 or 1 args (handled specially)
+                    'create_grave': 1,
+                    'remove_grave': 1,
+                    'join_paths': -1,  # Variable args
+                    'split_path': 1,
+                    'normalize_path': 1,
+                    'encode_soul': 1,
+                    'decode_soul': 1,
                     'raise_corpse': 1,
                     'raise_phantom': 1,
                     'steal_soul': 1,
@@ -452,28 +463,44 @@ class ReaperVM:
                 
                 arg_count = arg_counts.get(func_name, 0)
                 
-                # Pop arguments from stack
-                # Arguments are pushed in reverse order, so popping gives us correct order
-                args = []
-                for _ in range(arg_count):
-                    if self.stack.size() == 0:
-                        raise ReaperRuntimeError(
-                            f"Built-in function '{func_name}' requires {arg_count} arguments, but stack is empty"
-                        )
-                    args.append(self.stack.pop())
-                
-                # Reverse args because they were pushed in reverse order
-                args.reverse()
-                
-                # Call the function
-                if arg_count == 0:
-                    result = func()
-                elif arg_count == 1:
-                    result = func(args[0])
-                elif arg_count == 2:
-                    result = func(args[0], args[1])
-                else:
+                # Handle variable arguments (-1 means variable)
+                if arg_count == -1:
+                    # For variable args, pop all available arguments
+                    args = []
+                    while self.stack.size() > 0:
+                        args.insert(0, self.stack.pop())
                     result = func(*args)
+                elif arg_count == 0:
+                    # Special handling for functions that can take 0 or 1 args (like list_graves)
+                    if func_name == 'list_graves':
+                        # Check if there's an argument on the stack
+                        if self.stack.size() > 0:
+                            result = func(self.stack.pop())
+                        else:
+                            result = func()
+                    else:
+                        result = func()
+                else:
+                    # Pop arguments from stack
+                    # Arguments are pushed in reverse order, so popping gives us correct order
+                    args = []
+                    for _ in range(arg_count):
+                        if self.stack.size() == 0:
+                            raise ReaperRuntimeError(
+                                f"Built-in function '{func_name}' requires {arg_count} arguments, but stack is empty"
+                            )
+                        args.append(self.stack.pop())
+                    
+                    # Reverse args because they were pushed in reverse order
+                    args.reverse()
+                    
+                    # Call the function
+                    if arg_count == 1:
+                        result = func(args[0])
+                    elif arg_count == 2:
+                        result = func(args[0], args[1])
+                    else:
+                        result = func(*args)
                 
                 # Push result (always push, even if None, so caller can decide what to do)
                 self.stack.push(result)

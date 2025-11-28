@@ -47,7 +47,9 @@ class Environment:
             "harvest", "rest", "raise_corpse", "steal_soul", 
             "summon", "final_rest", "curse", "absolute", 
             "lesser", "greater", "ritual_args", "raise_phantom",
-            "excavate", "bury"
+            "excavate", "bury", "excavate_bytes", "bury_bytes",
+            "inspect", "list_graves", "create_grave", "remove_grave",
+            "join_paths", "split_path", "normalize_path", "encode_soul", "decode_soul"
         ]
         
         for func_name in builtin_functions:

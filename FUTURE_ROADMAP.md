@@ -1,6 +1,6 @@
 # REAPER Language - Future Development Roadmap
 
-**Current Version**: 0.9.0  
+**Current Version**: 1.0.0  
 **Last Updated**: 2025-01-27
 
 ---
@@ -93,15 +93,16 @@
 #### Priority 5: File I/O Operations ✅
 **Status**: ✅ **COMPLETE**  
 **Impact**: High - Essential for security tools  
-**Effort**: Completed (2 hours)
+**Effort**: Completed (4 hours)
 
 **Requirements:**
-- `excavate` function (read file)
-- `bury` function (write file)
-- Binary file support
-- File metadata operations
-- Directory operations
-- Path manipulation
+- ✅ `excavate` function (read file)
+- ✅ `bury` function (write file)
+- ✅ Binary file support (`excavate_bytes`, `bury_bytes`)
+- ✅ File metadata operations (`inspect`)
+- ✅ Directory operations (`list_graves`, `create_grave`, `remove_grave`)
+- ✅ Path manipulation (`join_paths`, `split_path`, `normalize_path`)
+- ✅ String encoding/decoding (`encode_soul`, `decode_soul`)
 
 **Benefits:**
 - Complete file system access

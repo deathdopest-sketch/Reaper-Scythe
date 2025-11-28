@@ -1542,7 +1542,9 @@ class Interpreter:
         # Check if it's a built-in function
         if name in ["harvest", "rest", "raise_corpse", "steal_soul", "summon", 
                    "final_rest", "curse", "absolute", "lesser", "greater",
-                   "raise_phantom", "excavate", "bury"]:
+                   "raise_phantom", "excavate", "bury", "excavate_bytes", "bury_bytes",
+                   "inspect", "list_graves", "create_grave", "remove_grave",
+                   "join_paths", "split_path", "normalize_path", "encode_soul", "decode_soul"]:
             return self._call_builtin_function(name, arguments, line, column)
         
         # Get function from environment
@@ -1656,6 +1658,28 @@ class Interpreter:
             return self._builtin_excavate(arguments, line, column)
         elif name == "bury":
             return self._builtin_bury(arguments, line, column)
+        elif name == "excavate_bytes":
+            return self._builtin_excavate_bytes(arguments, line, column)
+        elif name == "bury_bytes":
+            return self._builtin_bury_bytes(arguments, line, column)
+        elif name == "inspect":
+            return self._builtin_inspect(arguments, line, column)
+        elif name == "list_graves":
+            return self._builtin_list_graves(arguments, line, column)
+        elif name == "create_grave":
+            return self._builtin_create_grave(arguments, line, column)
+        elif name == "remove_grave":
+            return self._builtin_remove_grave(arguments, line, column)
+        elif name == "join_paths":
+            return self._builtin_join_paths(arguments, line, column)
+        elif name == "split_path":
+            return self._builtin_split_path(arguments, line, column)
+        elif name == "normalize_path":
+            return self._builtin_normalize_path(arguments, line, column)
+        elif name == "encode_soul":
+            return self._builtin_encode_soul(arguments, line, column)
+        elif name == "decode_soul":
+            return self._builtin_decode_soul(arguments, line, column)
         else:
             raise ReaperRuntimeError(
                 f"Unknown built-in function: {name}",
@@ -2005,6 +2029,332 @@ class Interpreter:
             )
         
         return None
+    
+    def _builtin_excavate_bytes(self, arguments: List[Any], line: int, column: int) -> bytes:
+        """Built-in excavate_bytes (read binary file) function."""
+        if len(arguments) != 1:
+            raise ReaperRuntimeError(
+                f"excavate_bytes() expects 1 argument (file path), got {len(arguments)}",
+                line, column
+            )
+        
+        file_path = arguments[0]
+        self._check_type(file_path, str, "excavate_bytes file path", line, column)
+        
+        from pathlib import Path
+        
+        path = Path(file_path)
+        if not path.is_absolute():
+            path = Path.cwd() / path
+            path = path.resolve()
+        
+        if not path.exists():
+            raise ReaperRuntimeError(f"File not found: {file_path}", line, column)
+        if not path.is_file():
+            raise ReaperRuntimeError(f"Path is not a file: {file_path}", line, column)
+        
+        file_size = path.stat().st_size
+        max_file_size = 10 * 1024 * 1024  # 10MB limit
+        if file_size > max_file_size:
+            raise ReaperMemoryError(
+                f"File too large: {file_size} bytes (max {max_file_size})",
+                line, column,
+                resource_type="file",
+                current_size=file_size,
+                max_size=max_file_size
+            )
+        
+        try:
+            with open(path, 'rb') as f:
+                content = f.read()
+            return content
+        except PermissionError:
+            raise ReaperRuntimeError(f"Permission denied: {file_path}", line, column)
+        except Exception as e:
+            raise ReaperRuntimeError(f"Error reading binary file '{file_path}': {str(e)}", line, column)
+    
+    def _builtin_bury_bytes(self, arguments: List[Any], line: int, column: int) -> None:
+        """Built-in bury_bytes (write binary file) function."""
+        if len(arguments) != 2:
+            raise ReaperRuntimeError(
+                f"bury_bytes() expects 2 arguments (file path, content), got {len(arguments)}",
+                line, column
+            )
+        
+        file_path = arguments[0]
+        content = arguments[1]
+        
+        self._check_type(file_path, str, "bury_bytes file path", line, column)
+        self._check_type(content, bytes, "bury_bytes content", line, column)
+        
+        from pathlib import Path
+        
+        path = Path(file_path)
+        if not path.is_absolute():
+            path = Path.cwd() / path
+            path = path.resolve()
+        
+        parent_dir = path.parent
+        if not parent_dir.exists():
+            raise ReaperRuntimeError(f"Parent directory does not exist: {parent_dir}", line, column)
+        
+        content_size = len(content)
+        max_content_size = 10 * 1024 * 1024  # 10MB limit
+        if content_size > max_content_size:
+            raise ReaperMemoryError(
+                f"Content too large: {content_size} bytes (max {max_content_size})",
+                line, column,
+                resource_type="file content",
+                current_size=content_size,
+                max_size=max_content_size
+            )
+        
+        try:
+            with open(path, 'wb') as f:
+                f.write(content)
+        except PermissionError:
+            raise ReaperRuntimeError(f"Permission denied: {file_path}", line, column)
+        except Exception as e:
+            raise ReaperRuntimeError(f"Error writing binary file '{file_path}': {str(e)}", line, column)
+        
+        return None
+    
+    def _builtin_inspect(self, arguments: List[Any], line: int, column: int) -> Dict[str, Any]:
+        """Built-in inspect (get file metadata) function."""
+        if len(arguments) != 1:
+            raise ReaperRuntimeError(
+                f"inspect() expects 1 argument (file path), got {len(arguments)}",
+                line, column
+            )
+        
+        file_path = arguments[0]
+        self._check_type(file_path, str, "inspect file path", line, column)
+        
+        from pathlib import Path
+        import os
+        from datetime import datetime
+        
+        path = Path(file_path)
+        if not path.is_absolute():
+            path = Path.cwd() / path
+            path = path.resolve()
+        
+        if not path.exists():
+            raise ReaperRuntimeError(f"Path not found: {file_path}", line, column)
+        
+        stat = path.stat()
+        
+        metadata = {
+            "path": str(path),
+            "exists": True,
+            "is_file": path.is_file(),
+            "is_directory": path.is_dir(),
+            "size": stat.st_size,
+            "created": datetime.fromtimestamp(stat.st_ctime).isoformat(),
+            "modified": datetime.fromtimestamp(stat.st_mtime).isoformat(),
+            "accessed": datetime.fromtimestamp(stat.st_atime).isoformat(),
+        }
+        
+        # Add permissions (Unix-style)
+        if hasattr(stat, 'st_mode'):
+            mode = stat.st_mode
+            metadata["readable"] = os.access(path, os.R_OK)
+            metadata["writable"] = os.access(path, os.W_OK)
+            metadata["executable"] = os.access(path, os.X_OK)
+        
+        return metadata
+    
+    def _builtin_list_graves(self, arguments: List[Any], line: int, column: int) -> List[str]:
+        """Built-in list_graves (list directory) function."""
+        if len(arguments) > 1:
+            raise ReaperRuntimeError(
+                f"list_graves() expects 0 or 1 argument (directory path), got {len(arguments)}",
+                line, column
+            )
+        
+        from pathlib import Path
+        
+        if len(arguments) == 0:
+            path = Path.cwd()
+        else:
+            dir_path = arguments[0]
+            self._check_type(dir_path, str, "list_graves directory path", line, column)
+            path = Path(dir_path)
+            if not path.is_absolute():
+                path = Path.cwd() / path
+            path = path.resolve()
+        
+        if not path.exists():
+            raise ReaperRuntimeError(f"Directory not found: {path}", line, column)
+        if not path.is_dir():
+            raise ReaperRuntimeError(f"Path is not a directory: {path}", line, column)
+        
+        try:
+            entries = [entry.name for entry in path.iterdir()]
+            entries.sort()
+            return entries
+        except PermissionError:
+            raise ReaperRuntimeError(f"Permission denied: {path}", line, column)
+        except Exception as e:
+            raise ReaperRuntimeError(f"Error listing directory '{path}': {str(e)}", line, column)
+    
+    def _builtin_create_grave(self, arguments: List[Any], line: int, column: int) -> None:
+        """Built-in create_grave (create directory) function."""
+        if len(arguments) != 1:
+            raise ReaperRuntimeError(
+                f"create_grave() expects 1 argument (directory path), got {len(arguments)}",
+                line, column
+            )
+        
+        dir_path = arguments[0]
+        self._check_type(dir_path, str, "create_grave directory path", line, column)
+        
+        from pathlib import Path
+        
+        path = Path(dir_path)
+        if not path.is_absolute():
+            path = Path.cwd() / path
+        path = path.resolve()
+        
+        if path.exists():
+            raise ReaperRuntimeError(f"Path already exists: {path}", line, column)
+        
+        try:
+            path.mkdir(parents=True, exist_ok=False)
+        except PermissionError:
+            raise ReaperRuntimeError(f"Permission denied: {path}", line, column)
+        except Exception as e:
+            raise ReaperRuntimeError(f"Error creating directory '{path}': {str(e)}", line, column)
+        
+        return None
+    
+    def _builtin_remove_grave(self, arguments: List[Any], line: int, column: int) -> None:
+        """Built-in remove_grave (remove directory) function."""
+        if len(arguments) != 1:
+            raise ReaperRuntimeError(
+                f"remove_grave() expects 1 argument (directory path), got {len(arguments)}",
+                line, column
+            )
+        
+        dir_path = arguments[0]
+        self._check_type(dir_path, str, "remove_grave directory path", line, column)
+        
+        from pathlib import Path
+        import shutil
+        
+        path = Path(dir_path)
+        if not path.is_absolute():
+            path = Path.cwd() / path
+        path = path.resolve()
+        
+        if not path.exists():
+            raise ReaperRuntimeError(f"Path not found: {path}", line, column)
+        if not path.is_dir():
+            raise ReaperRuntimeError(f"Path is not a directory: {path}", line, column)
+        
+        try:
+            shutil.rmtree(path)
+        except PermissionError:
+            raise ReaperRuntimeError(f"Permission denied: {path}", line, column)
+        except Exception as e:
+            raise ReaperRuntimeError(f"Error removing directory '{path}': {str(e)}", line, column)
+        
+        return None
+    
+    def _builtin_join_paths(self, arguments: List[Any], line: int, column: int) -> str:
+        """Built-in join_paths (join path components) function."""
+        if len(arguments) < 1:
+            raise ReaperRuntimeError(
+                f"join_paths() expects at least 1 argument, got {len(arguments)}",
+                line, column
+            )
+        
+        from pathlib import Path
+        
+        paths = []
+        for arg in arguments:
+            self._check_type(arg, str, "join_paths path component", line, column)
+            paths.append(arg)
+        
+        result = Path(paths[0])
+        for p in paths[1:]:
+            result = result / p
+        
+        return str(result)
+    
+    def _builtin_split_path(self, arguments: List[Any], line: int, column: int) -> Dict[str, str]:
+        """Built-in split_path (split path into components) function."""
+        if len(arguments) != 1:
+            raise ReaperRuntimeError(
+                f"split_path() expects 1 argument (file path), got {len(arguments)}",
+                line, column
+            )
+        
+        file_path = arguments[0]
+        self._check_type(file_path, str, "split_path file path", line, column)
+        
+        from pathlib import Path
+        
+        path = Path(file_path)
+        
+        return {
+            "directory": str(path.parent),
+            "name": path.name,
+            "stem": path.stem,
+            "suffix": path.suffix,
+            "full": str(path)
+        }
+    
+    def _builtin_normalize_path(self, arguments: List[Any], line: int, column: int) -> str:
+        """Built-in normalize_path (normalize path) function."""
+        if len(arguments) != 1:
+            raise ReaperRuntimeError(
+                f"normalize_path() expects 1 argument (file path), got {len(arguments)}",
+                line, column
+            )
+        
+        file_path = arguments[0]
+        self._check_type(file_path, str, "normalize_path file path", line, column)
+        
+        from pathlib import Path
+        
+        path = Path(file_path)
+        if not path.is_absolute():
+            path = Path.cwd() / path
+        
+        return str(path.resolve())
+    
+    def _builtin_encode_soul(self, arguments: List[Any], line: int, column: int) -> bytes:
+        """Built-in encode_soul (encode string to bytes) function."""
+        if len(arguments) != 1:
+            raise ReaperRuntimeError(
+                f"encode_soul() expects 1 argument (string), got {len(arguments)}",
+                line, column
+            )
+        
+        text = arguments[0]
+        self._check_type(text, str, "encode_soul string", line, column)
+        
+        try:
+            return text.encode('utf-8')
+        except Exception as e:
+            raise ReaperRuntimeError(f"Error encoding string: {str(e)}", line, column)
+    
+    def _builtin_decode_soul(self, arguments: List[Any], line: int, column: int) -> str:
+        """Built-in decode_soul (decode bytes to string) function."""
+        if len(arguments) != 1:
+            raise ReaperRuntimeError(
+                f"decode_soul() expects 1 argument (bytes), got {len(arguments)}",
+                line, column
+            )
+        
+        data = arguments[0]
+        self._check_type(data, bytes, "decode_soul bytes", line, column)
+        
+        try:
+            return data.decode('utf-8')
+        except Exception as e:
+            raise ReaperRuntimeError(f"Error decoding bytes: {str(e)}", line, column)
     
     # ============================================================================
     # Type Checking and Conversion Methods
