@@ -1,6 +1,6 @@
 # REAPER Language - Future Development Roadmap
 
-**Current Version**: 1.6.0  
+**Current Version**: 1.7.0  
 **Last Updated**: 2025-01-27
 
 ---
@@ -219,6 +219,20 @@
 2. ✅ Package manager
 3. ✅ IDE plugins
 4. ✅ Standard library expansion
+
+#### Standard Library Expansion ✅
+**Status**: ✅ **COMPLETE**  
+**Impact**: High - Developer productivity  
+**Effort**: Completed (3 hours)
+
+**Features Implemented**:
+- ✅ Graveyard standard library module
+- ✅ Time utilities (get_current_time, format_time, parse_time, sleep, measure_time)
+- ✅ Math utilities (min/max, clamp, lerp, round, floor, ceil, sqrt, pow, log, sin, cos, tan)
+- ✅ String utilities (trim, upper/lower case, starts_with, ends_with, contains, replace_all, split, join, pad)
+- ✅ Collection utilities (filter, map, reduce, find, count, reverse, sort, unique, flatten)
+- ✅ Random utilities (random_int, random_float, random_choice, shuffle)
+- ✅ Module integration with INFILTRATE statement
 
 ---
 

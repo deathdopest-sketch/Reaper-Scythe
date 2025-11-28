@@ -74,6 +74,15 @@ class ReaperModuleLoader:
         "graveyard": "stdlib.graveyard",
     }
     
+    # Graveyard submodules (for direct import like graveyard.time_utils)
+    GRAVEYARD_MODULES = {
+        "graveyard.time_utils": "stdlib.graveyard.time_utils",
+        "graveyard.math_utils": "stdlib.graveyard.math_utils",
+        "graveyard.string_utils": "stdlib.graveyard.string_utils",
+        "graveyard.collection_utils": "stdlib.graveyard.collection_utils",
+        "graveyard.random_utils": "stdlib.graveyard.random_utils",
+    }
+    
     def __init__(self, base_path: Optional[Path] = None, current_file: Optional[Path] = None):
         """
         Initialize module loader.
@@ -205,6 +214,10 @@ class ReaperModuleLoader:
         # Check standard libraries
         if module_name in self.STANDARD_LIBRARIES:
             return self.STANDARD_LIBRARIES[module_name]
+        
+        # Check graveyard submodules
+        if module_name in self.GRAVEYARD_MODULES:
+            return self.GRAVEYARD_MODULES[module_name]
         
         # Try direct import (for future custom modules)
         # For now, return None if not found
