@@ -94,6 +94,7 @@ class ReaperModuleLoader:
             self.base_path,
             self.base_path / "modules",
             self.base_path / "lib",
+            self.base_path / "reaper_modules",  # Package manager directory
         ]
         
         # Add current file's directory if available
@@ -330,6 +331,19 @@ class ReaperModuleLoader:
                         module_file = subdir / f"{module_name}.reaper"
                         if module_file.exists() and module_file.is_file():
                             return module_file
+                        
+                        # For package manager: check if subdir is a package and contains the module
+                        # (e.g., reaper_modules/my_package/utils.reaper)
+                        if search_path.name == "reaper_modules":
+                            # This is a package directory, check for module inside
+                            module_file = subdir / f"{module_name}.reaper"
+                            if module_file.exists() and module_file.is_file():
+                                return module_file
+                            
+                            # Also check for __init__.reaper in package
+                            init_file = subdir / "__init__.reaper"
+                            if init_file.exists() and module_name == subdir.name:
+                                return init_file
         
         # Try relative to current file if available
         if self.current_file:

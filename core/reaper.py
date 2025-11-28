@@ -664,6 +664,8 @@ Examples:
   python reaper.py                    # Start interactive REPL
   python reaper.py script.reaper      # Run REAPER file
   python reaper.py script.reaper arg1 arg2  # Run with arguments
+  python reaper.py package init       # Initialize package
+  python reaper.py package install github:user/repo  # Install package
 
 The REAPER language features:
   - Zombie/death-themed syntax
@@ -674,6 +676,36 @@ The REAPER language features:
         """
     )
     
+    # Create subparsers for commands
+    subparsers = parser.add_subparsers(dest='command', help='Commands')
+    
+    # Package manager subcommand
+    pkg_parser = subparsers.add_parser('package', help='Package manager commands')
+    pkg_subparsers = pkg_parser.add_subparsers(dest='pkg_command', help='Package commands')
+    
+    # Package init
+    init_parser = pkg_subparsers.add_parser('init', help='Initialize a new REAPER project')
+    init_parser.add_argument('name', nargs='?', help='Package name')
+    init_parser.add_argument('version', nargs='?', default='0.1.0', help='Package version')
+    init_parser.add_argument('author', nargs='?', default='', help='Package author')
+    init_parser.add_argument('description', nargs='*', help='Package description')
+    
+    # Package install
+    install_parser = pkg_subparsers.add_parser('install', help='Install a package')
+    install_parser.add_argument('package_spec', help='Package specification (e.g., github:user/repo)')
+    install_parser.add_argument('--dev', action='store_true', help='Install as dev dependency')
+    
+    # Package list
+    pkg_subparsers.add_parser('list', help='List installed packages')
+    
+    # Package uninstall
+    uninstall_parser = pkg_subparsers.add_parser('uninstall', help='Uninstall a package')
+    uninstall_parser.add_argument('package_name', help='Package name to uninstall')
+    
+    # Package update
+    pkg_subparsers.add_parser('update', help='Update all packages')
+    
+    # Regular file execution arguments (when not using package command)
     parser.add_argument(
         'filename',
         nargs='?',
@@ -732,6 +764,58 @@ The REAPER language features:
     
     args = parser.parse_args()
     
+    # Handle package manager commands
+    if args.command == 'package':
+        try:
+            from .package_manager import ReaperPackageManager
+            pm = ReaperPackageManager()
+            
+            if args.pkg_command == 'init':
+                name = args.name or Path.cwd().name
+                version = args.version or "0.1.0"
+                author = args.author or ""
+                description = " ".join(args.description) if args.description else ""
+                pm.init_project(name, version, author, description)
+                return 0
+            
+            elif args.pkg_command == 'install':
+                if not args.package_spec:
+                    safe_print("Error: Package specification required")
+                    return 1
+                pm.install_package(args.package_spec, dev=args.dev)
+                return 0
+            
+            elif args.pkg_command == 'list':
+                packages = pm.list_packages()
+                if not packages:
+                    safe_print("No packages installed")
+                else:
+                    safe_print(f"Installed packages ({len(packages)}):")
+                    for pkg in packages:
+                        safe_print(f"  {pkg['name']} v{pkg['version']}")
+                return 0
+            
+            elif args.pkg_command == 'uninstall':
+                if not args.package_name:
+                    safe_print("Error: Package name required")
+                    return 1
+                pm.uninstall_package(args.package_name)
+                return 0
+            
+            elif args.pkg_command == 'update':
+                pm.update_packages()
+                return 0
+            
+            else:
+                pkg_parser.print_help()
+                return 0
+                
+        except Exception as e:
+            safe_print(f"Package manager error: {e}")
+            import traceback
+            traceback.print_exc()
+            return 1
+    
     # Check for Thanatos mode (advanced AI)
     if args.thanatos:
         try:
@@ -764,7 +848,10 @@ The REAPER language features:
             traceback.print_exc()
             return 1
     
-    if args.filename:
+    # If package command was used, don't process filename
+    if args.command == 'package':
+        pass  # Already handled above
+    elif args.filename:
         # File execution mode
         if not args.filename.endswith('.reaper'):
             safe_print("Warning: File doesn't have .reaper extension")
@@ -774,7 +861,7 @@ The REAPER language features:
             return compile_to_bytecode_file(args.filename)
         
         return run_file(args.filename, args.args, use_bytecode=args.use_bytecode)
-    else:
+    elif args.command is None:
         # REPL mode
         try:
             repl = ReaperREPL()
