@@ -1,0 +1,176 @@
+{
+  "$schema": "https://raw.githubusercontent.com/martinring/tmlanguage/master/tmlanguage.json",
+  "name": "REAPER",
+  "patterns": [
+    {
+      "include": "#comments"
+    },
+    {
+      "include": "#strings"
+    },
+    {
+      "include": "#numbers"
+    },
+    {
+      "include": "#keywords"
+    },
+    {
+      "include": "#operators"
+    },
+    {
+      "include": "#punctuation"
+    }
+  ],
+  "repository": {
+    "comments": {
+      "patterns": [
+        {
+          "name": "comment.line.number-sign.reaper",
+          "match": "#.*$"
+        }
+      ]
+    },
+    "strings": {
+      "patterns": [
+        {
+          "name": "string.quoted.double.reaper",
+          "begin": "\"",
+          "end": "\"",
+          "patterns": [
+            {
+              "name": "constant.character.escape.reaper",
+              "match": "\\\\."
+            },
+            {
+              "name": "meta.embedded.line.reaper",
+              "begin": "\\$\\{",
+              "end": "\\}",
+              "patterns": [
+                {
+                  "include": "$self"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "string.quoted.single.reaper",
+          "begin": "'",
+          "end": "'",
+          "patterns": [
+            {
+              "name": "constant.character.escape.reaper",
+              "match": "\\\\."
+            }
+          ]
+        }
+      ]
+    },
+    "numbers": {
+      "patterns": [
+        {
+          "name": "constant.numeric.hex.reaper",
+          "match": "\\b0[xX][0-9a-fA-F]+\\b"
+        },
+        {
+          "name": "constant.numeric.binary.reaper",
+          "match": "\\b0[bB][01]+\\b"
+        },
+        {
+          "name": "constant.numeric.float.reaper",
+          "match": "\\b\\d+\\.\\d+([eE][+-]?\\d+)?\\b"
+        },
+        {
+          "name": "constant.numeric.integer.reaper",
+          "match": "\\b\\d+\\b"
+        }
+      ]
+    },
+    "keywords": {
+      "patterns": [
+        {
+          "name": "keyword.control.reaper",
+          "match": "\\b(if|otherwise|shamble|decay|soulless|flee|persist|reap|harvest|raise|spawn|judge|case|default|risk|catch|finally|throw|breach|await|infiltrate|for|in|from|to)\\b"
+        },
+        {
+          "name": "keyword.other.reaper",
+          "match": "\\b(rest|this|void|DEAD|RISEN)\\b"
+        },
+        {
+          "name": "storage.type.reaper",
+          "match": "\\b(corpse|soul|crypt|grimoire|tomb|wraith|phantom|specter|shadow|eternal|infect|tomb)\\b"
+        },
+        {
+          "name": "support.function.builtin.reaper",
+          "match": "\\b(harvest|rest|raise_corpse|steal_soul|summon|final_rest|curse|absolute|lesser|greater|raise_phantom|excavate|bury|excavate_bytes|bury_bytes|inspect|list_graves|create_grave|remove_grave|join_paths|split_path|normalize_path|encode_soul|decode_soul|ritual_args)\\b"
+        },
+        {
+          "name": "variable.language.reaper",
+          "match": "\\b(this|void|DEAD|RISEN)\\b"
+        }
+      ]
+    },
+    "operators": {
+      "patterns": [
+        {
+          "name": "keyword.operator.arithmetic.reaper",
+          "match": "[+\\-*/%]"
+        },
+        {
+          "name": "keyword.operator.comparison.reaper",
+          "match": "==|!=|<=|>=|<|>"
+        },
+        {
+          "name": "keyword.operator.logical.reaper",
+          "match": "\\b(corrupt|infest|banish)\\b"
+        },
+        {
+          "name": "keyword.operator.bitwise.reaper",
+          "match": "\\b(wither|spread|mutate|invert|rot)\\b"
+        },
+        {
+          "name": "keyword.operator.assignment.reaper",
+          "match": "=|\\+=|\\-=|\\*=|/=|%="
+        },
+        {
+          "name": "keyword.operator.arrow.reaper",
+          "match": "->|=>"
+        }
+      ]
+    },
+    "punctuation": {
+      "patterns": [
+        {
+          "name": "punctuation.terminator.reaper",
+          "match": ";"
+        },
+        {
+          "name": "punctuation.separator.reaper",
+          "match": ","
+        },
+        {
+          "name": "punctuation.section.brackets.reaper",
+          "match": "[\\[\\]]"
+        },
+        {
+          "name": "punctuation.section.braces.reaper",
+          "match": "[{}]"
+        },
+        {
+          "name": "punctuation.section.parens.reaper",
+          "match": "[()]"
+        },
+        {
+          "name": "punctuation.accessor.reaper",
+          "match": "\\."
+        },
+        {
+          "name": "punctuation.separator.colon.reaper",
+          "match": ":"
+        }
+      ]
+    }
+  },
+  "scopeName": "source.reaper"
+}
+

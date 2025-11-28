@@ -1,0 +1,35 @@
+{
+  "name": "reaper-language",
+  "displayName": "REAPER Language",
+  "description": "Syntax highlighting for the REAPER programming language",
+  "version": "1.1.0",
+  "engines": {
+    "vscode": "^1.74.0"
+  },
+  "categories": [
+    "Programming Languages"
+  ],
+  "contributes": {
+    "languages": [
+      {
+        "id": "reaper",
+        "aliases": [
+          "REAPER",
+          "reaper"
+        ],
+        "extensions": [
+          ".reaper"
+        ],
+        "configuration": "./language-configuration.json"
+      }
+    ],
+    "grammars": [
+      {
+        "language": "reaper",
+        "scopeName": "source.reaper",
+        "path": "./syntaxes/reaper.tmLanguage.json"
+      }
+    ]
+  }
+}
+
