@@ -2,6 +2,9 @@
 
 Complete IDE support for the REAPER programming language in Visual Studio Code.
 
+**Publisher**: DeathDopest  
+**© 2025 DeathAIAUS. All rights reserved.**
+
 ## Features
 
 ### 🎨 Syntax Highlighting
