@@ -134,6 +134,17 @@ class ReaperVM:
             "void": self._builtin_void,
             "excavate": self._builtin_excavate,
             "bury": self._builtin_bury,
+            "excavate_bytes": self._builtin_excavate_bytes,
+            "bury_bytes": self._builtin_bury_bytes,
+            "inspect": self._builtin_inspect,
+            "list_graves": self._builtin_list_graves,
+            "create_grave": self._builtin_create_grave,
+            "remove_grave": self._builtin_remove_grave,
+            "join_paths": self._builtin_join_paths,
+            "split_path": self._builtin_split_path,
+            "normalize_path": self._builtin_normalize_path,
+            "encode_soul": self._builtin_encode_soul,
+            "decode_soul": self._builtin_decode_soul,
         }
     
     def load_program(self, program: BytecodeProgram) -> None:
