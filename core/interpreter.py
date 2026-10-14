@@ -50,7 +50,7 @@ class Interpreter:
     def __init__(self, max_recursion_depth: int = 1000, execution_timeout: float = 30.0,
                  max_string_length: int = 1000000, max_array_size: int = 100000,
                  max_dict_size: int = 100000, max_function_calls: int = 10000,
-                 rate_limit_ops_per_second: float = 1000.0, rate_limit_burst: int = 100):
+                 rate_limit_ops_per_second: Optional[float] = None, rate_limit_burst: int = 100):
         """Initialize interpreter with enhanced resource management."""
         # Resource limits
         self.max_recursion_depth = max_recursion_depth
@@ -68,8 +68,10 @@ class Interpreter:
         self.start_time = 0
         self.timeout_timer = None
         
-        # Rate limiting
-        self.rate_limiter = TokenBucket(rate_limit_ops_per_second, rate_limit_burst)
+        # Rate limiting is opt-in: every AST node costs a token, so the old default
+        # (1000/s, burst 100) aborted ordinary programs after ~100 nodes.
+        self.rate_limiter = (TokenBucket(rate_limit_ops_per_second, rate_limit_burst)
+                             if rate_limit_ops_per_second else None)
         self.operation_count = 0
         
         # Memory tracking
@@ -209,7 +211,7 @@ class Interpreter:
     
     def _check_rate_limit(self, operation_type: str = "general") -> None:
         """Check rate limiting for operations."""
-        if not self.rate_limiter.try_acquire(1.0):
+        if self.rate_limiter is not None and not self.rate_limiter.try_acquire(1.0):
             raise ReaperRuntimeError(
                 f"Rate limit exceeded for {operation_type} operations"
             )
@@ -953,28 +955,30 @@ class Interpreter:
         self._check_rate_limit("function_call")
         arguments = [self._execute(arg) for arg in node.arguments]
         
-        # Check if this is a callable from an imported module
+        # Only the lookup may fail with "undefined"; errors raised by the call
+        # itself must propagate (catching them here used to run the function twice).
         current_env = self._get_current_environment()
         try:
             func_value, _ = current_env.get(node.function_name, node.line, node.column)
-            
-            # If it's a Python callable wrapper, call it directly
-            if callable(func_value) and not isinstance(func_value, (InfectNode, LambdaNode, TombNode)):
-                converted_args = [self._convert_reaper_to_python(arg) for arg in arguments]
-                try:
-                    result = func_value(*converted_args)
-                    return self._convert_python_to_reaper(result)
-                except Exception as e:
-                    raise ReaperRuntimeError(
-                        f"Error calling '{node.function_name}': {str(e)}",
-                        node.line, node.column, node.filename
-                    )
-            # If it's a lambda or function node, call it directly
-            elif isinstance(func_value, (InfectNode, LambdaNode)):
-                return self._call_function(func_value, arguments, node.line, node.column)
         except ReaperRuntimeError:
-            # Function not found in environment, try built-in
-            pass
+            func_value = None
+        
+        if isinstance(func_value, (InfectNode, LambdaNode)):
+            return self._call_function(func_value, arguments, node.line, node.column)
+        
+        # Python callable from an imported module (built-ins are bound methods of
+        # this interpreter and go through _call_function_by_name below)
+        if (callable(func_value) and not isinstance(func_value, TombNode)
+                and getattr(func_value, '__self__', None) is not self):
+            converted_args = [self._convert_reaper_to_python(arg) for arg in arguments]
+            try:
+                result = func_value(*converted_args)
+                return self._convert_python_to_reaper(result)
+            except Exception as e:
+                raise ReaperRuntimeError(
+                    f"Error calling '{node.function_name}': {str(e)}",
+                    node.line, node.column, node.filename
+                )
         
         return self._call_function_by_name(node.function_name, arguments, node.line, node.column)
     
@@ -1288,6 +1292,9 @@ class Interpreter:
         # Execute try block
         try:
             result = self._execute(node.try_block)
+        except (ReaperReturn, ReaperFlee, ReaperPersist):
+            # reap/flee/persist are control flow, not errors
+            raise
         except ReaperError as e:
             exception_caught = e
             
@@ -1424,6 +1431,8 @@ class Interpreter:
             for statement in node.try_block.statements:
                 self._execute(statement)
             return None
+        except (ReaperReturn, ReaperFlee, ReaperPersist):
+            raise
         except Exception as e:
             # Find matching catch block
             for exception_name, catch_block in node.catch_blocks:
