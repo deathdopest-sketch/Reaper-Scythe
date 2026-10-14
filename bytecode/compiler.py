@@ -31,10 +31,11 @@ class BytecodeCompiler:
         for statement in ast.statements:
             self._compile_statement(statement)
         
-        # Run optimization passes
-        self._peephole_optimize()
-        self._optimize_jumps()
-        self._eliminate_dead_code()
+        # Optimization passes (_peephole_optimize, _optimize_jumps,
+        # _eliminate_dead_code) are disabled: each removes instructions without
+        # remapping jump targets or function start offsets, and the jump/dead-code
+        # passes treat function bodies (skipped by a JMP) as unreachable and
+        # delete them. Re-enable once they rewrite offsets after removal.
         
         return self.program
     
