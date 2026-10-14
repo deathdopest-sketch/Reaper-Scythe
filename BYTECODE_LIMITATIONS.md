@@ -1,57 +1,39 @@
 # Bytecode VM Status
 
-**Version**: 1.1.0  
-**Last Updated**: 2025-01-27
+**Status**: Experimental. Use the interpreter (the default) for real work.
 
-## Current Status
+## What was fixed
 
-### ✅ Full Feature Support
+- The compiler's optimisation passes (`_peephole_optimize`, `_optimize_jumps`,
+  `_eliminate_dead_code`) deleted instructions without remapping jump targets or
+  function offsets, and two of them removed every function body as "unreachable".
+  They are disabled until they rewrite offsets after removal.
+- Built-in calls received their arguments in reverse order (e.g. `bury(path, content)`
+  wrote to a file named after the content). Fixed.
+- `lesser`, `greater`, `curse`, `haunt`, `rest` read from the stack instead of their
+  arguments and crashed. Fixed.
+- `excavate_bytes`, `bury_bytes`, `inspect`, `list_graves`, `create_grave`,
+  `remove_grave`, `join_paths`, `split_path`, `normalize_path`, `encode_soul`,
+  `decode_soul` were registered but never defined, so the VM crashed on startup.
+  They now delegate to the interpreter's implementations.
+- Scripts using features the compiler can't emit (e.g. array methods like `.curse()`)
+  fall back to the interpreter with a warning instead of crashing.
 
-As of version 1.0.0, the bytecode VM has **full support** for all REAPER language features, including:
+## Known gaps
 
-✅ **User-Defined Functions**: Complete support for function definitions and calls  
-✅ **Recursion**: Recursive function calls work correctly  
-✅ **Local Variables**: Function parameters and local scoping  
-✅ **Return Values**: Function return statements  
-✅ **Built-in Functions**: All built-in functions work in bytecode mode  
-✅ **Bytecode Compilation**: All scripts can be compiled to bytecode  
-✅ **Bytecode Execution**: Full feature parity with interpreter mode
+Output matches the interpreter for 25 of 48 scripts in `core/test_examples` and
+`core/test_*.reaper`. Known problems:
 
-### Performance
-
-- **Bytecode VM**: ~10x faster than interpreter mode
-- **Memory Usage**: Bounded by resource limits
-- **Optimizations**: Peephole optimizations for constant folding
+- Recursion (`factorial.reaper`) hits "Maximum instruction count exceeded".
+- `else if` chains underflow the stack.
+- `flee` (break), `persist` (continue), `infiltrate`, and `tomb` classes compile to nothing.
+- `void` values aren't printed by `harvest`.
+- Runtime errors (key, bounds, type, undefined variable) are reported differently or not at all.
+- `curse(x)` as a builtin returns the length; the interpreter's `curse` builtin takes 2 arguments.
 
 ## Usage
 
-Both modes now support all features:
-
 ```bash
-# Interpreter mode (default)
-python reaper_main.py script.reaper
-
-# Bytecode mode (faster, full feature support)
-python reaper_main.py --bytecode script.reaper
+python reaper_main.py script.reaper              # interpreter (recommended)
+python reaper_main.py --bytecode script.reaper   # experimental VM
 ```
-
-## Technical Details
-
-The bytecode VM now includes:
-1. ✅ Function bytecode storage in program metadata
-2. ✅ Function call mechanism with call stack
-3. ✅ Parameter passing and local variable management
-4. ✅ Return value handling
-5. ✅ Recursive function support
-
-## Future Improvements
-
-- JIT compilation for even better performance
-- Function inlining optimizations
-- Advanced peephole optimizations
-- Dead code elimination
-
----
-
-**Note**: Both interpreter and bytecode modes now have full feature parity. Bytecode mode is recommended for production use due to better performance.
-

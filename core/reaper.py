@@ -386,8 +386,13 @@ def compile_to_bytecode_file(source_file: str) -> int:
         # Parse
         program = parse(tokens)
         
-        # Compile to bytecode
-        bytecode_program = compile_to_bytecode(program)
+        # Compile to bytecode. The compiler doesn't cover every language feature
+        # yet (e.g. most array methods), so fall back to the interpreter.
+        try:
+            bytecode_program = compile_to_bytecode(program)
+        except (AttributeError, NotImplementedError, ReaperRuntimeError) as e:
+            safe_print(f"Warning: bytecode compiler can't handle this script ({e}); running with the interpreter.", file=sys.stderr)
+            return run_file(filename, args, use_bytecode=False)
         
         # Write bytecode file
         bytecode_file = source_file + '.bc'
@@ -435,8 +440,13 @@ def run_file_with_bytecode(source: str, filename: str, args: List[str]) -> int:
         # Parse
         program = parse(tokens)
         
-        # Compile to bytecode
-        bytecode_program = compile_to_bytecode(program)
+        # Compile to bytecode. The compiler doesn't cover every language feature
+        # yet (e.g. most array methods), so fall back to the interpreter.
+        try:
+            bytecode_program = compile_to_bytecode(program)
+        except (AttributeError, NotImplementedError, ReaperRuntimeError) as e:
+            safe_print(f"Warning: bytecode compiler can't handle this script ({e}); running with the interpreter.", file=sys.stderr)
+            return run_file(filename, args, use_bytecode=False)
         
         # Create VM
         vm = create_vm()
@@ -548,6 +558,8 @@ def run_file(filename: str, args: List[str], use_bytecode: bool = False) -> int:
         
         # If bytecode mode requested, compile and execute with VM
         if use_bytecode:
+            safe_print("Warning: the bytecode VM is experimental and doesn't match the interpreter yet "
+                       "(see BYTECODE_LIMITATIONS.md).", file=sys.stderr)
             return run_file_with_bytecode(source, filename, args)
         
         # Otherwise use interpreter (default)
@@ -654,31 +666,10 @@ def run_file(filename: str, args: List[str], use_bytecode: bool = False) -> int:
         return 2
 
 
-def main() -> int:
-    """Main entry point for REAPER interpreter."""
-    parser = argparse.ArgumentParser(
-        description="REAPER Language Interpreter - The Undead Programming Language",
-        formatter_class=argparse.RawDescriptionHelpFormatter,
-        epilog="""
-Examples:
-  python reaper.py                    # Start interactive REPL
-  python reaper.py script.reaper      # Run REAPER file
-  python reaper.py script.reaper arg1 arg2  # Run with arguments
-  python reaper.py package init       # Initialize package
-  python reaper.py package install github:user/repo  # Install package
-
-The REAPER language features:
-  - Zombie/death-themed syntax
-  - Static typing with corpse, soul, crypt, grimoire, tomb, wraith, void
-  - Functions, classes, loops, conditionals
-  - String interpolation and built-in methods
-  - Comprehensive error handling and resource limits
-        """
-    )
-    
-    # Create subparsers for commands
+def _add_package_parser(parser: argparse.ArgumentParser) -> argparse.ArgumentParser:
+    """Register the `package` subcommand and its actions."""
     subparsers = parser.add_subparsers(dest='command', help='Commands')
-    
+
     # Package manager subcommand
     pkg_parser = subparsers.add_parser('package', help='Package manager commands')
     pkg_subparsers = pkg_parser.add_subparsers(dest='pkg_command', help='Package commands')
@@ -704,24 +695,57 @@ The REAPER language features:
     
     # Package update
     pkg_subparsers.add_parser('update', help='Update all packages')
-    
-    # Regular file execution arguments (when not using package command)
-    parser.add_argument(
-        'filename',
-        nargs='?',
-        help='REAPER source file to execute'
+    return pkg_parser
+
+
+def main(argv: Optional[List[str]] = None) -> int:
+    """Main entry point for REAPER interpreter."""
+    if argv is None:
+        argv = sys.argv[1:]
+    # argparse can't mix an optional positional filename with subcommands:
+    # the subparser claims the first positional and rejects anything that
+    # isn't 'package'. Only register the package subcommand when it's used.
+    first_positional = next((a for a in argv if not a.startswith('-')), None)
+    package_mode = first_positional == 'package'
+
+    parser = argparse.ArgumentParser(
+        description="REAPER Language Interpreter - The Undead Programming Language",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog="""
+Examples:
+  python reaper.py                    # Start interactive REPL
+  python reaper.py script.reaper      # Run REAPER file
+  python reaper.py script.reaper arg1 arg2  # Run with arguments
+  python reaper.py package init       # Initialize package
+  python reaper.py package install github:user/repo  # Install package
+
+The REAPER language features:
+  - Zombie/death-themed syntax
+  - Static typing with corpse, soul, crypt, grimoire, tomb, wraith, void
+  - Functions, classes, loops, conditionals
+  - String interpolation and built-in methods
+  - Comprehensive error handling and resource limits
+        """
     )
     
-    parser.add_argument(
-        'args',
-        nargs='*',
-        help='Arguments to pass to the REAPER script'
-    )
+    pkg_parser = None
+    if package_mode:
+        pkg_parser = _add_package_parser(parser)
+    else:
+        # Regular file execution arguments (when not using package command)
+        parser.add_argument(
+            'filename',
+            nargs='?',
+            help='REAPER source file to execute'
+        )
+        parser.add_argument(
+            'args',
+            nargs='*',
+            help='Arguments to pass to the REAPER script'
+        )
     
     # Import version information
     try:
-        import sys
-        import os
         sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
         from version import get_version_string
         version_str = get_version_string()
@@ -762,7 +786,9 @@ The REAPER language features:
         help='Launch Thanatos advanced security expert (requires course completion)'
     )
     
-    args = parser.parse_args()
+    args = parser.parse_args(argv)
+    args.command = getattr(args, 'command', None)
+    args.filename = getattr(args, 'filename', None)
     
     # Handle package manager commands
     if args.command == 'package':

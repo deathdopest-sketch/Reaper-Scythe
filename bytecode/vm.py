@@ -152,6 +152,46 @@ class ReaperVM:
             "decode_soul": self._builtin_decode_soul,
         }
     
+    def _interpreter_builtin(self, name: str, *args: Any) -> Any:
+        """Run a file/path/encoding builtin using the tree-walking interpreter's implementation."""
+        if not hasattr(self, "_builtin_interpreter"):
+            from core.interpreter import Interpreter
+            self._builtin_interpreter = Interpreter()
+        return getattr(self._builtin_interpreter, f"_builtin_{name}")(list(args), 0, 0)
+
+    def _builtin_excavate_bytes(self, *args: Any) -> Any:
+        return self._interpreter_builtin("excavate_bytes", *args)
+
+    def _builtin_bury_bytes(self, *args: Any) -> Any:
+        return self._interpreter_builtin("bury_bytes", *args)
+
+    def _builtin_inspect(self, *args: Any) -> Any:
+        return self._interpreter_builtin("inspect", *args)
+
+    def _builtin_list_graves(self, *args: Any) -> Any:
+        return self._interpreter_builtin("list_graves", *args)
+
+    def _builtin_create_grave(self, *args: Any) -> Any:
+        return self._interpreter_builtin("create_grave", *args)
+
+    def _builtin_remove_grave(self, *args: Any) -> Any:
+        return self._interpreter_builtin("remove_grave", *args)
+
+    def _builtin_join_paths(self, *args: Any) -> Any:
+        return self._interpreter_builtin("join_paths", *args)
+
+    def _builtin_split_path(self, *args: Any) -> Any:
+        return self._interpreter_builtin("split_path", *args)
+
+    def _builtin_normalize_path(self, *args: Any) -> Any:
+        return self._interpreter_builtin("normalize_path", *args)
+
+    def _builtin_encode_soul(self, *args: Any) -> Any:
+        return self._interpreter_builtin("encode_soul", *args)
+
+    def _builtin_decode_soul(self, *args: Any) -> Any:
+        return self._interpreter_builtin("decode_soul", *args)
+
     def load_program(self, program: BytecodeProgram) -> None:
         """Load a bytecode program into the VM."""
         self.program = program
@@ -486,9 +526,10 @@ class ReaperVM:
                 # Handle variable arguments (-1 means variable)
                 if arg_count == -1:
                     # For variable args, pop all available arguments
+                    # Compiler pushes arguments in reverse, so popping yields them in call order
                     args = []
                     while self.stack.size() > 0:
-                        args.insert(0, self.stack.pop())
+                        args.append(self.stack.pop())
                     result = func(*args)
                 elif arg_count == 0:
                     # Special handling for functions that can take 0 or 1 args (like list_graves)
@@ -510,9 +551,6 @@ class ReaperVM:
                                 f"Built-in function '{func_name}' requires {arg_count} arguments, but stack is empty"
                             )
                         args.append(self.stack.pop())
-                    
-                    # Reverse args because they were pushed in reverse order
-                    args.reverse()
                     
                     # Call the function
                     if arg_count == 1:
@@ -814,22 +852,15 @@ class ReaperVM:
         print(value)
         return None
     
-    def _builtin_curse(self) -> Any:
+    def _builtin_curse(self, value: Any) -> Any:
         """Built-in curse function (length)."""
-        if self.stack.size() == 0:
-            raise ReaperRuntimeError("curse() requires an argument")
-        value = self.stack.pop()
         if isinstance(value, (str, list, dict)):
             return len(value)
         else:
             raise ReaperTypeError(f"curse() not supported for {type(value)}")
     
-    def _builtin_haunt(self) -> bool:
+    def _builtin_haunt(self, container: Any, key: Any) -> bool:
         """Built-in haunt function (contains)."""
-        if self.stack.size() < 2:
-            raise ReaperRuntimeError("haunt() requires two arguments")
-        key = self.stack.pop()
-        container = self.stack.pop()
         if isinstance(container, (list, dict, str)):
             return key in container
         else:
@@ -858,33 +889,23 @@ class ReaperVM:
         """Built-in persist function (continue)."""
         raise ReaperRuntimeError("persist() not implemented in VM")
     
-    def _builtin_rest(self) -> None:
+    def _builtin_rest(self, seconds: Any) -> None:
         """Built-in rest function (sleep)."""
         import time
-        if self.stack.size() > 0:
-            seconds = self.stack.pop()
-            if isinstance(seconds, (int, float)):
-                time.sleep(seconds)
-            else:
-                raise ReaperTypeError("rest() requires numeric argument")
+        if isinstance(seconds, (int, float)):
+            time.sleep(seconds)
+        else:
+            raise ReaperTypeError("rest() requires numeric argument")
     
-    def _builtin_lesser(self) -> Any:
+    def _builtin_lesser(self, a: Any, b: Any) -> Any:
         """Built-in lesser function (min)."""
-        if self.stack.size() < 2:
-            raise ReaperRuntimeError("lesser() requires two arguments")
-        b = self.stack.pop()
-        a = self.stack.pop()
         if isinstance(a, (int, float)) and isinstance(b, (int, float)):
             return min(a, b)
         else:
             raise ReaperTypeError(f"lesser() not supported for {type(a)} and {type(b)}")
     
-    def _builtin_greater(self) -> Any:
+    def _builtin_greater(self, a: Any, b: Any) -> Any:
         """Built-in greater function (max)."""
-        if self.stack.size() < 2:
-            raise ReaperRuntimeError("greater() requires two arguments")
-        b = self.stack.pop()
-        a = self.stack.pop()
         if isinstance(a, (int, float)) and isinstance(b, (int, float)):
             return max(a, b)
         else:

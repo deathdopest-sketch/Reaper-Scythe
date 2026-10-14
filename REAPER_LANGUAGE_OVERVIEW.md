@@ -32,7 +32,7 @@
 - **Explicit Typing**: Strong static type system with 7 fundamental types
 - **Safety First**: Comprehensive error handling, bounds checking, and resource limits
 - **Security-Focused**: Built-in security libraries for network operations, cryptography, and anonymity
-- **Performance**: Bytecode VM for 10x performance improvement over interpreter
+- **Performance**: Experimental bytecode VM (see BYTECODE_LIMITATIONS.md)
 - **Learning System**: Integrated Necronomicon learning system with AI tutors
 
 ---
