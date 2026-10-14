@@ -95,6 +95,45 @@ class OpCode(IntEnum):
     CLEAR_MEMORY = 0xB1    # Clear sensitive memory
     RATE_LIMIT = 0xB2      # Rate limiting check
     
+    # Scoped execution model used by the compiler (operand in each comment)
+    LOAD_NAME = 0xC0       # Push variable from the current environment chain
+    DEFINE_NAME = 0xC1     # Declare variable in current scope: (name, type)
+    STORE_NAME = 0xC2      # Assign: update if it exists, else declare: (name, type)
+    SET_NAME = 0xC3        # Update existing variable
+    PUSH_SCOPE = 0xC4      # Enter a child environment
+    POP_SCOPE = 0xC5       # Leave the current environment
+    BINARY_OP = 0xC6       # Binary operator by name (+, -, spread, rot, ...)
+    UNARY_OP = 0xC7        # Unary operator by name (-, banish, invert)
+    COMPARE_OP = 0xC8      # Comparison by name (==, <, ...)
+    TO_BOOL = 0xC9         # Strict truthiness check (type error if not bool)
+    BUILD_ARRAY = 0xCA     # Pop n values into an array
+    BUILD_DICT = 0xCB      # Pop n key/value pairs into a dictionary
+    BUILD_STRING = 0xCC    # Join n interpolation parts
+    INDEX_GET = 0xCD       # obj[index]
+    INDEX_SET = 0xCE       # obj[index] = value (stack: value, obj, index)
+    SLICE = 0xCF           # obj[start:end:step]: (has_start, has_end, has_step)
+    PROP_GET = 0xD0        # obj.name
+    PROP_SET = 0xD1        # obj.name = value (stack: value, obj)
+    CALL_METHOD = 0xD2     # obj.name(args): (name, argc)
+    CALL_NAME = 0xD3       # name(args): (name, argc)
+    DEFINE_FUNCTION = 0xD4 # Bind function/class node (constant index) by name
+    RETURN_VALUE = 0xD5    # Return top of stack from the current frame
+    SPAWN = 0xD6           # Instantiate class: constant index of SpawnNode
+    HARVEST = 0xD7         # Print n values
+    REST = 0xD8            # Sleep for popped milliseconds
+    ITER_RANGE = 0xD9      # Pop end, start; push inclusive range iterator
+    ITER_LIST = 0xDA       # Pop array; push iterator
+    FOR_ITER = 0xDB        # Advance iterator: (var_name, mode, exit_pc)
+    SETUP_TRY = 0xDC       # Register exception handler at operand pc
+    POP_TRY = 0xDD         # Drop innermost exception handler
+    MATCH_EXC = 0xDE       # Push whether exception on stack matches: (type, style)
+    RERAISE = 0xDF         # Re-raise exception on stack
+    RAISE_EXC = 0xE0       # Raise exception: (type_name, has_message)
+    EXEC_NODE = 0xE1       # Evaluate AST node (constant index) with the interpreter
+    WRAP_EXC = 0xE2        # Convert non-Reaper exception on stack to ReaperRuntimeError
+    LOAD_STR = 0xE3        # Push string constant with memory accounting
+    RAISE_FLOW = 0xE4      # flee/persist outside a loop: "flee" or "persist"
+
     # Special Operations
     HALT = 0xFF            # Halt execution
 
@@ -198,6 +237,11 @@ class BytecodeProgram:
         self.functions: Dict[str, int] = {}  # Function name -> instruction index
         self.function_metadata: Dict[str, Dict[str, Any]] = {}  # Function name -> {param_names, param_count}
         self.globals: Dict[str, Any] = {}
+        # Constant index of a function/lambda/method AST node -> entry instruction
+        self.function_entries: Dict[int, int] = {}
+        # Source the program was compiled from; set for .bc files (format v2)
+        self.source: Optional[str] = None
+        self.filename: str = "<unknown>"
     
     def add_instruction(self, instruction: BytecodeInstruction) -> int:
         """Add instruction and return its index."""
@@ -218,7 +262,18 @@ class BytecodeProgram:
         }
     
     def to_bytes(self) -> bytes:
-        """Convert program to byte representation."""
+        """Convert program to byte representation.
+
+        Programs compiled from source are written as format v2, which stores the
+        source and is recompiled on load: compiled programs reference AST nodes
+        (functions, classes) that format v1 cannot represent. Hand-built programs
+        without source keep the v1 instruction encoding.
+        """
+        if self.source is not None:
+            name = self.filename.encode('utf-8')
+            source = self.source.encode('utf-8')
+            return (b'REAP' + struct.pack('>H', 2) + struct.pack('>H', len(name)) + name
+                    + struct.pack('>I', len(source)) + source)
         # Header: magic number (4 bytes) + version (2 bytes) + instruction count (4 bytes)
         magic = b'REAP'
         version = struct.pack('>H', 1)
@@ -262,6 +317,28 @@ class BytecodeProgram:
         return header + constants_count + constants_data + functions_count + functions_data + instructions_data
     
     @classmethod
+    def _from_source_bytes(cls, data: bytes) -> 'BytecodeProgram':
+        """Load a format v2 file: parse and compile the embedded source."""
+        offset = 6
+        name_length = struct.unpack('>H', data[offset:offset + 2])[0]
+        offset += 2
+        filename = data[offset:offset + name_length].decode('utf-8')
+        offset += name_length
+        source_length = struct.unpack('>I', data[offset:offset + 4])[0]
+        offset += 4
+        source = data[offset:offset + source_length].decode('utf-8')
+        if len(source.encode('utf-8')) != source_length:
+            raise ValueError("Truncated bytecode file")
+
+        from core.lexer import tokenize
+        from core.parser import parse
+        from .compiler import BytecodeCompiler
+        program = BytecodeCompiler().compile(parse(tokenize(source, filename)))
+        program.source = source
+        program.filename = filename
+        return program
+
+    @classmethod
     def from_bytes(cls, data: bytes) -> 'BytecodeProgram':
         """Create program from byte representation."""
         if len(data) < 10:
@@ -273,6 +350,8 @@ class BytecodeProgram:
             raise ValueError("Invalid magic number")
         
         version = struct.unpack('>H', data[4:6])[0]
+        if version == 2:
+            return cls._from_source_bytes(data)
         instruction_count = struct.unpack('>I', data[6:10])[0]
         offset = 10
         

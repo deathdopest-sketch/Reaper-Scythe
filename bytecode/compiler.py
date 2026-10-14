@@ -1,846 +1,584 @@
 """
 REAPER Bytecode Compiler
 
-This module compiles REAPER AST nodes into bytecode instructions
-for execution by the virtual machine.
+Compiles a parsed REAPER program (AST) into bytecode for the VM.
+
+The compiled program mirrors the tree-walking interpreter's semantics exactly:
+variables live in the interpreter's Environment objects (block scoping,
+dynamic scoping for calls), and operators, methods and built-ins call the
+interpreter's own implementations at run time. Function, lambda and method
+bodies are compiled once and appended after the main program; the VM finds
+them by the identity of their AST node.
+
+A few rarely used constructs (imports, async blocks, list comprehensions,
+cloak) are evaluated by the interpreter through EXEC_NODE. They contain no
+control flow that escapes them, and any user functions they call still run
+as bytecode.
 """
 
-from typing import Any, Dict, List, Optional, Union
+from typing import Any, List, Optional, Tuple
+
 from core.ast_nodes import *
-from .instructions import OpCode, BytecodeInstruction, BytecodeProgram
 from core.reaper_error import ReaperRuntimeError
+from .instructions import OpCode, BytecodeInstruction, BytecodeProgram
+
+
+# Nodes evaluated by the interpreter (see module docstring).
+_DELEGATED = (InfiltrateNode, CloakNode, BreachNode, AwaitNode, ListComprehensionNode)
+
+
+class _Loop:
+    """Compile-time loop context for flee (break) / persist (continue)."""
+
+    def __init__(self, scope_depth: int, try_depth: int, has_iterator: bool):
+        self.scope_depth = scope_depth
+        self.try_depth = try_depth
+        self.has_iterator = has_iterator
+        self.continue_target: Optional[int] = None
+        self.break_jumps: List[int] = []
+        self.continue_jumps: List[int] = []
+
+
+class _Try:
+    """Compile-time protected region; finally code is inlined on early exits."""
+
+    def __init__(self, scope_depth: int, finally_block: Optional[BlockNode]):
+        self.scope_depth = scope_depth
+        self.finally_block = finally_block
 
 
 class BytecodeCompiler:
-    """Compiler that converts AST to bytecode."""
-    
+    """Compiles REAPER AST nodes to bytecode."""
+
     def __init__(self):
         self.program = BytecodeProgram()
-        self.current_function = None
-        self.function_stack: List[str] = []
-        self.label_counter = 0
-    
+        self._pending: List[Tuple[int, Any]] = []  # (const index, function-like node)
+        self._const_index = {}
+        self._scope_depth = 0
+        self._loops: List[_Loop] = []
+        self._tries: List[_Try] = []
+        self._node = None  # node providing positions for emitted instructions
+
+    # ------------------------------------------------------------------ driver
+
     def compile(self, ast: ProgramNode) -> BytecodeProgram:
-        """Compile AST program to bytecode."""
+        """Compile a ProgramNode into a BytecodeProgram."""
         self.program = BytecodeProgram()
-        self.current_function = None
-        self.function_stack = []
-        self.label_counter = 0
-        
-        # Compile all statements
+        self._pending = []
+        self._const_index = {}
         for statement in ast.statements:
-            self._compile_statement(statement)
-        
-        # Optimization passes (_peephole_optimize, _optimize_jumps,
-        # _eliminate_dead_code) are disabled: each removes instructions without
-        # remapping jump targets or function start offsets, and the jump/dead-code
-        # passes treat function bodies (skipped by a JMP) as unreachable and
-        # delete them. Re-enable once they rewrite offsets after removal.
-        
+            self._statement(statement)
+        self._emit(OpCode.HALT)
+
+        # Function bodies go after the main program; compiling one can queue more.
+        compiled = set()
+        while self._pending:
+            const_index, node = self._pending.pop(0)
+            if const_index in compiled:
+                continue
+            compiled.add(const_index)
+            self._compile_function_body(const_index, node)
         return self.program
-    
+
+    # --------------------------------------------------------------- emitting
+
+    def _emit(self, opcode: OpCode, operand: Any = None, node: Any = None) -> int:
+        source = node or self._node
+        instruction = BytecodeInstruction(
+            opcode, operand,
+            getattr(source, "line", 0) or 0,
+            getattr(source, "column", 0) or 0,
+        )
+        instruction.filename = getattr(source, "filename", None)
+        return self.program.add_instruction(instruction)
+
+    def _here(self) -> int:
+        return len(self.program.instructions)
+
+    def _patch(self, index: int, target: int) -> None:
+        instruction = self.program.instructions[index]
+        if instruction.opcode == OpCode.FOR_ITER:
+            name, mode, _ = instruction.operand
+            instruction.operand = (name, mode, target)
+        else:
+            instruction.operand = target
+
+    def _const(self, value: Any) -> int:
+        """Index of a literal constant, shared between identical literals."""
+        key = (type(value), value)
+        index = self._const_index.get(key)
+        if index is None:
+            index = self.program.add_constant(value)
+            self._const_index[key] = index
+        return index
+
+    def _function_const(self, node: Any) -> int:
+        index = self.program.add_constant(node)
+        self._pending.append((index, node))
+        return index
+
+    # ------------------------------------------------------------ statements
+
+    def _statement(self, node: ASTNode) -> None:
+        previous, self._node = self._node, node
+        try:
+            self._compile_statement(node)
+        finally:
+            self._node = previous
+
     def _compile_statement(self, node: ASTNode) -> None:
-        """Compile a statement node."""
-        if isinstance(node, AssignmentNode):
-            self._compile_assignment(node)
-        elif isinstance(node, ExpressionStatementNode):
-            self._compile_expression(node.expression)
-            self.program.add_instruction(BytecodeInstruction(OpCode.POP))  # Pop return value
-        elif isinstance(node, CallNode):
-            # Function call as statement (e.g., raise TestFunction();)
-            self._compile_call(node)
-            self.program.add_instruction(BytecodeInstruction(OpCode.POP))  # Pop return value
+        if isinstance(node, BlockNode):
+            self._block(node)
+        elif isinstance(node, AssignmentNode):
+            self._assignment(node, keep_value=False)
+        elif isinstance(node, CompoundAssignmentNode):
+            self._compound_assignment(node, keep_value=False)
+        elif isinstance(node, (IndexAssignNode, PropertyAssignNode)):
+            self._target_assign(node, keep_value=False)
         elif isinstance(node, HarvestNode):
-            # Harvest statement (harvest expr1, expr2, ...;)
-            # Compile each expression and call harvest builtin
-            for expr in node.expressions:
-                self._compile_expression(expr)
-                self.program.add_instruction(BytecodeInstruction(OpCode.CALL_BUILTIN, "harvest"))
-                self.program.add_instruction(BytecodeInstruction(OpCode.POP))  # Pop return value
+            for expression in node.expressions:
+                self._expression(expression)
+            self._emit(OpCode.HARVEST, len(node.expressions))
         elif isinstance(node, IfNode):
-            self._compile_if(node)
+            self._if(node)
         elif isinstance(node, ShambleNode):
-            self._compile_shamble(node)
+            self._shamble(node)
         elif isinstance(node, DecayNode):
-            self._compile_decay(node)
+            self._decay(node)
         elif isinstance(node, SoullessNode):
-            self._compile_soulless(node)
-        elif isinstance(node, InfectNode):
-            self._compile_infect_function(node)
-        elif isinstance(node, TombNode):
-            self._compile_tomb_class(node)
-        elif isinstance(node, ReapNode):
-            self._compile_reap_return(node)
+            self._soulless(node)
+        elif isinstance(node, JudgeNode):
+            self._judge(node)
         elif isinstance(node, FleeNode):
-            self._compile_flee_break(node)
+            self._loop_exit(is_break=True)
         elif isinstance(node, PersistNode):
-            self._compile_persist_continue(node)
-        elif isinstance(node, BlockNode):
-            self._compile_block(node)
-        elif isinstance(node, InfiltrateNode):
-            self._compile_infiltrate(node)
-        elif isinstance(node, CloakNode):
-            self._compile_cloak(node)
+            self._loop_exit(is_break=False)
+        elif isinstance(node, ReapNode):
+            self._reap(node)
+        elif isinstance(node, (InfectNode, TombNode)):
+            if isinstance(node, TombNode):
+                const_index = self.program.add_constant(node)
+                for method in node.methods:
+                    if isinstance(method, InfectNode):
+                        self._function_const(method)
+            else:
+                const_index = self._function_const(node)
+            self._emit(OpCode.DEFINE_FUNCTION, const_index)
+        elif isinstance(node, RiskNode):
+            self._risk(node)
         elif isinstance(node, ExploitNode):
-            self._compile_exploit(node)
-        elif isinstance(node, BreachNode):
-            self._compile_breach(node)
+            self._exploit(node)
+        elif isinstance(node, RaiseExceptionNode):
+            self._raise_exception(node)
+        elif isinstance(node, RestNode):
+            self._expression(node.duration)
+            self._emit(OpCode.REST)
+        elif isinstance(node, ExpressionStatementNode):
+            self._expression(node.expression)
+            self._emit(OpCode.POP)
         else:
-            raise ReaperRuntimeError(f"Unknown statement type: {type(node)}")
-    
-    def _compile_assignment(self, node: AssignmentNode) -> None:
-        """Compile assignment statement."""
-        # Compile the value expression
-        self._compile_expression(node.value)
-        
-        # Store to appropriate location
-        if isinstance(node.target, VariableNode):
-            if node.is_declaration:
-                # Variable declaration
-                if node.var_type == "shadow":
-                    # Convert to secure string
-                    self.program.add_instruction(BytecodeInstruction(OpCode.SECURE_STRING))
-                
-                # Store to local if in function, global otherwise
-                if self.current_function:
-                    self.program.add_instruction(BytecodeInstruction(OpCode.STORE_LOCAL, node.target.name))
-                else:
-                    self.program.add_instruction(BytecodeInstruction(OpCode.STORE_GLOBAL, node.target.name))
-            else:
-                # Regular assignment
-                if self.current_function:
-                    self.program.add_instruction(BytecodeInstruction(OpCode.STORE_LOCAL, node.target.name))
-                else:
-                    self.program.add_instruction(BytecodeInstruction(OpCode.STORE_GLOBAL, node.target.name))
-        else:
-            raise ReaperRuntimeError(f"Unsupported assignment target: {type(node.target)}")
-    
-    def _compile_expression(self, node: ASTNode) -> None:
-        """Compile an expression node."""
-        if isinstance(node, NumberNode):
-            self._compile_number(node)
-        elif isinstance(node, StringNode):
-            self._compile_string(node)
-        elif isinstance(node, BooleanNode):
-            self._compile_boolean(node)
-        elif isinstance(node, HexLiteralNode):
-            self._compile_hex_literal(node)
-        elif isinstance(node, BinaryLiteralNode):
-            self._compile_binary_literal(node)
-        elif isinstance(node, PhantomLiteralNode):
-            self._compile_phantom_literal(node)
-        elif isinstance(node, SpecterLiteralNode):
-            self._compile_specter_literal(node)
-        elif isinstance(node, ShadowLiteralNode):
-            self._compile_shadow_literal(node)
-        elif isinstance(node, ArrayNode):
-            self._compile_array(node)
-        elif isinstance(node, DictionaryNode):
-            self._compile_dictionary(node)
-        elif isinstance(node, VariableNode):
-            self._compile_variable(node)
-        elif isinstance(node, BinaryOpNode):
-            self._compile_binary_op(node)
-        elif isinstance(node, ComparisonNode):
-            self._compile_comparison(node)
-        elif isinstance(node, UnaryOpNode):
-            self._compile_unary_op(node)
-        elif isinstance(node, CallNode):
-            self._compile_call(node)
-        elif isinstance(node, MethodCallNode):
-            self._compile_method_call(node)
-        elif isinstance(node, IndexAccessNode):
-            self._compile_index_access(node)
-        elif isinstance(node, PropertyAccessNode):
-            self._compile_property_access(node)
-        elif isinstance(node, VoidNode):
-            self._compile_void(node)
-        else:
-            raise ReaperRuntimeError(f"Unknown expression type: {type(node)}")
-    
-    def _compile_number(self, node: NumberNode) -> None:
-        """Compile number literal."""
-        const_index = self.program.add_constant(node.value)
-        self.program.add_instruction(BytecodeInstruction(OpCode.PUSH_CONST, const_index))
-    
-    def _compile_string(self, node: StringNode) -> None:
-        """Compile string literal."""
-        const_index = self.program.add_constant(node.value)
-        self.program.add_instruction(BytecodeInstruction(OpCode.PUSH_CONST, const_index))
-    
-    def _compile_boolean(self, node: BooleanNode) -> None:
-        """Compile boolean literal."""
-        const_index = self.program.add_constant(node.value)
-        self.program.add_instruction(BytecodeInstruction(OpCode.PUSH_CONST, const_index))
-    
-    def _compile_hex_literal(self, node: HexLiteralNode) -> None:
-        """Compile hex literal."""
-        const_index = self.program.add_constant(node.value)
-        self.program.add_instruction(BytecodeInstruction(OpCode.PUSH_CONST, const_index))
-    
-    def _compile_binary_literal(self, node: BinaryLiteralNode) -> None:
-        """Compile binary literal."""
-        const_index = self.program.add_constant(node.value)
-        self.program.add_instruction(BytecodeInstruction(OpCode.PUSH_CONST, const_index))
-    
-    def _compile_phantom_literal(self, node: PhantomLiteralNode) -> None:
-        """Compile phantom literal."""
-        const_index = self.program.add_constant(node.value)
-        self.program.add_instruction(BytecodeInstruction(OpCode.PUSH_CONST, const_index))
-    
-    def _compile_specter_literal(self, node: SpecterLiteralNode) -> None:
-        """Compile specter literal."""
-        const_index = self.program.add_constant(node.value)
-        self.program.add_instruction(BytecodeInstruction(OpCode.PUSH_CONST, const_index))
-    
-    def _compile_shadow_literal(self, node: ShadowLiteralNode) -> None:
-        """Compile shadow literal."""
-        const_index = self.program.add_constant(node.value)
-        self.program.add_instruction(BytecodeInstruction(OpCode.PUSH_CONST, const_index))
-        self.program.add_instruction(BytecodeInstruction(OpCode.SECURE_STRING))
-    
-    def _compile_array(self, node: ArrayNode) -> None:
-        """Compile array literal."""
-        # Create array with size
-        size_const = self.program.add_constant(len(node.elements))
-        self.program.add_instruction(BytecodeInstruction(OpCode.PUSH_CONST, size_const))
-        self.program.add_instruction(BytecodeInstruction(OpCode.ARRAY_NEW))
-        
-        # Set elements
-        for i, element in enumerate(node.elements):
-            # Duplicate array
-            self.program.add_instruction(BytecodeInstruction(OpCode.DUP))
-            
-            # Push index
-            index_const = self.program.add_constant(i)
-            self.program.add_instruction(BytecodeInstruction(OpCode.PUSH_CONST, index_const))
-            
-            # Compile element value
-            self._compile_expression(element)
-            
-            # Set array element
-            self.program.add_instruction(BytecodeInstruction(OpCode.ARRAY_SET))
-    
-    def _compile_dictionary(self, node: DictionaryNode) -> None:
-        """Compile dictionary literal."""
-        # Create empty dictionary
-        self.program.add_instruction(BytecodeInstruction(OpCode.DICT_NEW))
-        
-        # Add key-value pairs
-        for key, value in node.pairs:
-            # Duplicate dictionary
-            self.program.add_instruction(BytecodeInstruction(OpCode.DUP))
-            
-            # Compile key
-            self._compile_expression(key)
-            
-            # Compile value
-            self._compile_expression(value)
-            
-            # Set dictionary entry
-            self.program.add_instruction(BytecodeInstruction(OpCode.DICT_SET))
-    
-    def _compile_variable(self, node: VariableNode) -> None:
-        """Compile variable reference."""
-        if self.current_function:
-            self.program.add_instruction(BytecodeInstruction(OpCode.PUSH_LOCAL, node.name))
-        else:
-            self.program.add_instruction(BytecodeInstruction(OpCode.PUSH_GLOBAL, node.name))
-    
-    def _compile_binary_op(self, node: BinaryOpNode) -> None:
-        """Compile binary operation."""
-        # Try simple constant folding for numeric literals
-        if isinstance(node.left, (NumberNode, HexLiteralNode, BinaryLiteralNode, PhantomLiteralNode)) \
-           and isinstance(node.right, (NumberNode, HexLiteralNode, BinaryLiteralNode, PhantomLiteralNode)):
-            left_val = self._literal_value(node.left)
-            right_val = self._literal_value(node.right)
-            op = node.operator
-            try:
-                result = None
-                if op == '+':
-                    result = left_val + right_val
-                elif op == '-':
-                    result = left_val - right_val
-                elif op == '*':
-                    result = left_val * right_val
-                elif op == '/':
-                    result = left_val / right_val
-                elif op == '%':
-                    result = left_val % right_val
-                elif op == '<<':
-                    result = int(left_val) << int(right_val)
-                elif op == '>>':
-                    result = int(left_val) >> int(right_val)
-                elif op == '&':
-                    result = int(left_val) & int(right_val)
-                elif op == '|':
-                    result = int(left_val) | int(right_val)
-                elif op == '^':
-                    result = int(left_val) ^ int(right_val)
-                # If we computed a result, emit a single PUSH_CONST
-                if result is not None:
-                    const_index = self.program.add_constant(result)
-                    self.program.add_instruction(BytecodeInstruction(OpCode.PUSH_CONST, const_index))
-                    return
-            except Exception:
-                # Fall back to normal codegen if folding failed
-                pass
-        
-        # Compile left and right operands normally
-        self._compile_expression(node.left)
-        self._compile_expression(node.right)
-        
-        # Map operator to opcode
-        opcode_map = {
-            '+': OpCode.ADD,
-            '-': OpCode.SUB,
-            '*': OpCode.MUL,
-            '/': OpCode.DIV,
-            '%': OpCode.MOD,
-            '==': OpCode.EQ,
-            '!=': OpCode.NE,
-            '<': OpCode.LT,
-            '<=': OpCode.LE,
-            '>': OpCode.GT,
-            '>=': OpCode.GE,
-            '&&': OpCode.LOG_AND,
-            '||': OpCode.LOG_OR,
-            '&': OpCode.BIT_AND,
-            '|': OpCode.BIT_OR,
-            '^': OpCode.BIT_XOR,
-            '<<': OpCode.BIT_SHL,
-            '>>': OpCode.BIT_SHR,
-            'rot': OpCode.BIT_ROT,
-            'wither': OpCode.BIT_SHR,
-            'spread': OpCode.BIT_SHL,
-            'mutate': OpCode.BIT_XOR,
-        }
-        
-        if node.operator in opcode_map:
-            self.program.add_instruction(BytecodeInstruction(opcode_map[node.operator]))
-        else:
-            raise ReaperRuntimeError(f"Unknown binary operator: {node.operator}")
-    
-    def _compile_comparison(self, node: ComparisonNode) -> None:
-        """Compile comparison operation."""
-        # Compile left and right operands
-        self._compile_expression(node.left)
-        self._compile_expression(node.right)
-        
-        # Map operator to opcode
-        opcode_map = {
-            '==': OpCode.EQ,
-            '!=': OpCode.NE,
-            '<': OpCode.LT,
-            '<=': OpCode.LE,
-            '>': OpCode.GT,
-            '>=': OpCode.GE,
-        }
-        
-        if node.operator in opcode_map:
-            self.program.add_instruction(BytecodeInstruction(opcode_map[node.operator]))
-        else:
-            raise ReaperRuntimeError(f"Unknown comparison operator: {node.operator}")
-    
-    def _compile_unary_op(self, node: UnaryOpNode) -> None:
-        """Compile unary operation."""
-        # Compile operand
-        self._compile_expression(node.operand)
-        
-        # Map operator to opcode
-        opcode_map = {
-            '-': OpCode.NEG,
-            '!': OpCode.LOG_NOT,
-            '~': OpCode.BIT_NOT,
-            'invert': OpCode.BIT_NOT,
-        }
-        
-        if node.operator in opcode_map:
-            self.program.add_instruction(BytecodeInstruction(opcode_map[node.operator]))
-        else:
-            raise ReaperRuntimeError(f"Unknown unary operator: {node.operator}")
-    
-    def _compile_call(self, node: CallNode) -> None:
-        """Compile function call."""
-        # Compile arguments first (in reverse order for stack)
-        for arg in reversed(node.arguments):
-            self._compile_expression(arg)
-        
-        # Check if built-in function
-        builtin_functions = ['harvest', 'curse', 'haunt', 'infect', 'raise', 'reap', 
-                           'flee', 'persist', 'rest', 'lesser', 'greater', 'risen', 'dead', 'void',
-                           'summon', 'final_rest', 'absolute', 'raise_corpse', 'steal_soul', 
-                           'raise_phantom', 'excavate', 'bury', 'excavate_bytes', 'bury_bytes',
-                           'inspect', 'list_graves', 'create_grave', 'remove_grave',
-                           'join_paths', 'split_path', 'normalize_path', 'encode_soul', 'decode_soul']
-        if node.function_name in builtin_functions:
-            self.program.add_instruction(BytecodeInstruction(OpCode.CALL_BUILTIN, node.function_name))
-        else:
-            # User-defined function - call directly with function name
-            # Arguments are already on the stack (pushed in reverse order)
-            self.program.add_instruction(BytecodeInstruction(OpCode.CALL, node.function_name))
-    
-    def _compile_method_call(self, node: MethodCallNode) -> None:
-        """Compile method call."""
-        # Compile object
-        self._compile_expression(node.object)
-        
-        # For now, treat as property access
-        if node.method_name == 'curse':
-            self.program.add_instruction(BytecodeInstruction(OpCode.CURSE))
-        elif node.method_name == 'haunt':
-            # Compile arguments
-            for arg in node.arguments:
-                self._compile_expression(arg)
-            self.program.add_instruction(BytecodeInstruction(OpCode.HAUNT))
-        else:
-            raise ReaperRuntimeError(f"Unknown method: {node.method_name}")
-    
-    def _compile_index_access(self, node: IndexAccessNode) -> None:
-        """Compile index access."""
-        # Compile object
-        self._compile_expression(node.object)
-        
-        # Compile index
-        self._compile_expression(node.index)
-        
-        # Get element
-        self.program.add_instruction(BytecodeInstruction(OpCode.ARRAY_GET))
-    
-    def _compile_property_access(self, node: PropertyAccessNode) -> None:
-        """Compile property access."""
-        # Compile object
-        self._compile_expression(node.object)
-        
-        # Push property name
-        const_index = self.program.add_constant(node.property_name)
-        self.program.add_instruction(BytecodeInstruction(OpCode.PUSH_CONST, const_index))
-        
-        # Get property
-        self.program.add_instruction(BytecodeInstruction(OpCode.DICT_GET))
-    
-    def _compile_void(self, node: VoidNode) -> None:
-        """Compile void literal."""
-        const_index = self.program.add_constant(None)
-        self.program.add_instruction(BytecodeInstruction(OpCode.PUSH_CONST, const_index))
-    
-    def _compile_if(self, node: IfNode) -> None:
-        """Compile if statement."""
-        # Compile condition
-        self._compile_expression(node.condition)
-        
-        # Create labels
-        else_label = self._generate_label()
-        end_label = self._generate_label()
-        
-        # Jump to else if condition is false
-        self.program.add_instruction(BytecodeInstruction(OpCode.JMP_IF_NOT, else_label))
-        
-        # Compile if body
-        self._compile_statement(node.if_body)
-        
-        # Jump to end
-        self.program.add_instruction(BytecodeInstruction(OpCode.JMP, end_label))
-        
-        # Set else label
-        self._set_label(else_label)
-        
-        # Compile else body if exists
-        if node.else_body:
-            self._compile_statement(node.else_body)
-        
-        # Set end label
-        self._set_label(end_label)
-    
-    def _compile_shamble(self, node: ShambleNode) -> None:
-        """Compile shamble loop (for loop)."""
-        # Create labels
-        loop_label = self._generate_label()
-        end_label = self._generate_label()
-        
-        # Compile start value
-        self._compile_expression(node.start)
-        
-        # Store loop variable
-        if self.current_function:
-            self.program.add_instruction(BytecodeInstruction(OpCode.STORE_LOCAL, node.variable))
-        else:
-            self.program.add_instruction(BytecodeInstruction(OpCode.STORE_GLOBAL, node.variable))
-        
-        # Set loop label
-        self._set_label(loop_label)
-        
-        # Load loop variable
-        if self.current_function:
-            self.program.add_instruction(BytecodeInstruction(OpCode.PUSH_LOCAL, node.variable))
-        else:
-            self.program.add_instruction(BytecodeInstruction(OpCode.PUSH_GLOBAL, node.variable))
-        
-        # Compile end value
-        self._compile_expression(node.end)
-        
-        # Compare loop variable with end value
-        self.program.add_instruction(BytecodeInstruction(OpCode.LT))
-        
-        # Jump to end if condition is false
-        self.program.add_instruction(BytecodeInstruction(OpCode.JMP_IF_NOT, end_label))
-        
-        # Compile body
-        self._compile_block(node.body)
-        
-        # Increment loop variable
-        if self.current_function:
-            self.program.add_instruction(BytecodeInstruction(OpCode.PUSH_LOCAL, node.variable))
-        else:
-            self.program.add_instruction(BytecodeInstruction(OpCode.PUSH_GLOBAL, node.variable))
-        
-        # Push 1
-        one_const = self.program.add_constant(1)
-        self.program.add_instruction(BytecodeInstruction(OpCode.PUSH_CONST, one_const))
-        
-        # Add 1
-        self.program.add_instruction(BytecodeInstruction(OpCode.ADD))
-        
-        # Store back to loop variable
-        if self.current_function:
-            self.program.add_instruction(BytecodeInstruction(OpCode.STORE_LOCAL, node.variable))
-        else:
-            self.program.add_instruction(BytecodeInstruction(OpCode.STORE_GLOBAL, node.variable))
-        
-        # Jump back to loop start
-        self.program.add_instruction(BytecodeInstruction(OpCode.JMP, loop_label))
-        
-        # Set end label
-        self._set_label(end_label)
-    
-    def _compile_decay(self, node: DecayNode) -> None:
-        """Compile decay loop (while loop)."""
-        # Create labels
-        loop_label = self._generate_label()
-        end_label = self._generate_label()
-        
-        # Set loop label
-        self._set_label(loop_label)
-        
-        # Compile condition
-        self._compile_expression(node.condition)
-        
-        # Jump to end if condition is false
-        self.program.add_instruction(BytecodeInstruction(OpCode.JMP_IF_NOT, end_label))
-        
-        # Compile body
-        self._compile_block(node.body)
-        
-        # Jump back to loop start
-        self.program.add_instruction(BytecodeInstruction(OpCode.JMP, loop_label))
-        
-        # Set end label
-        self._set_label(end_label)
-    
-    def _compile_soulless(self, node: SoullessNode) -> None:
-        """Compile soulless loop (infinite loop)."""
-        # Create labels
-        loop_label = self._generate_label()
-        end_label = self._generate_label()
-        
-        # Set loop label
-        self._set_label(loop_label)
-        
-        # Compile body
-        self._compile_block(node.body)
-        
-        # Jump back to loop start
-        self.program.add_instruction(BytecodeInstruction(OpCode.JMP, loop_label))
-        
-        # Set end label
-        self._set_label(end_label)
-    
-    def _compile_infect_function(self, node: InfectNode) -> None:
-        """Compile infect function definition."""
-        # If we're in the main program (not nested in another function),
-        # we need to skip over the function body during main execution
-        # Store the jump instruction index so we can fix it later
-        skip_jmp_index = None
-        if not self.current_function:
-            # In main program - jump over function body
-            # We'll set the target after compiling the body
-            skip_jmp_index = len(self.program.instructions)
-            self.program.add_instruction(BytecodeInstruction(OpCode.JMP, 0))  # Placeholder
-        
-        # Record function start (AFTER the skip JMP if we added one)
-        func_start = len(self.program.instructions)
-        
-        # Extract parameter names
-        param_names = [param[0] for param in node.params]
-        
-        # Register function with metadata
-        self.program.add_function(node.name, func_start, param_names)
-        
-        # Set current function context
-        old_function = self.current_function
-        self.current_function = node.name
-        self.function_stack.append(node.name)
-        
-        # Compile function body
-        # Parameters will be stored as locals when the function is called
-        self._compile_block(node.body)
-        
-        # Add implicit return if function doesn't end with explicit return
-        # (We check if the last instruction is RETURN, but for simplicity, we always add one)
-        # The VM will handle this correctly
-        self.program.add_instruction(BytecodeInstruction(OpCode.RETURN))
-        
-        # Fix the jump target if we added one
-        if skip_jmp_index is not None:
-            skip_target = len(self.program.instructions)
-            self.program.instructions[skip_jmp_index].operand = skip_target
-        
-        # Restore current function context
-        self.current_function = old_function
-        if self.function_stack:
-            self.function_stack.pop()
-    
-    def _compile_tomb_class(self, node: TombNode) -> None:
-        """Compile tomb class definition."""
-        # For now, classes are not implemented in bytecode
-        pass
-    
-    def _compile_reap_return(self, node: ReapNode) -> None:
-        """Compile reap return statement."""
-        if node.value:
-            self._compile_expression(node.value)
-        else:
-            # Push None
-            none_const = self.program.add_constant(None)
-            self.program.add_instruction(BytecodeInstruction(OpCode.PUSH_CONST, none_const))
-        
-        self.program.add_instruction(BytecodeInstruction(OpCode.RETURN))
-    
-    def _compile_flee_break(self, node: FleeNode) -> None:
-        """Compile flee break statement."""
-        # For now, break is not implemented in bytecode
-        pass
-    
-    def _compile_persist_continue(self, node: PersistNode) -> None:
-        """Compile persist continue statement."""
-        # For now, continue is not implemented in bytecode
-        pass
-    
-    def _compile_block(self, node: BlockNode) -> None:
-        """Compile block statement."""
+            # Any expression used as a statement.
+            self._expression(node)
+            self._emit(OpCode.POP)
+
+    def _block(self, node: BlockNode) -> None:
+        self._emit(OpCode.PUSH_SCOPE)
+        self._scope_depth += 1
         for statement in node.statements:
-            self._compile_statement(statement)
-    
-    def _compile_infiltrate(self, node: InfiltrateNode) -> None:
-        """Compile infiltrate statement."""
-        # For now, infiltrate is not implemented in bytecode
-        pass
-    
-    def _compile_cloak(self, node: CloakNode) -> None:
-        """Compile cloak statement."""
-        # For now, cloak is not implemented in bytecode
-        pass
-    
-    def _compile_exploit(self, node: ExploitNode) -> None:
-        """Compile exploit statement."""
-        # For now, exploit is not implemented in bytecode
-        pass
-    
-    def _compile_breach(self, node: BreachNode) -> None:
-        """Compile breach statement."""
-        # For now, breach is not implemented in bytecode
-        pass
-    
-    def _generate_label(self) -> int:
-        """Generate a unique label."""
-        self.label_counter += 1
-        return self.label_counter
-    
-    def _set_label(self, label: int) -> None:
-        """Set a label at current position."""
-        # Labels are handled by the instruction addresses
-        pass
+            self._statement(statement)
+        self._scope_depth -= 1
+        self._emit(OpCode.POP_SCOPE)
 
-    # ---------------------
-    # Optimization Passes
-    # ---------------------
-    def _peephole_optimize(self) -> None:
-        """Apply simple peephole optimizations to instruction stream."""
-        ins = self.program.instructions
-        consts = self.program.constants
-        optimized: List[BytecodeInstruction] = []
-        i = 0
-        while i < len(ins):
-            cur = ins[i]
-            nxt = ins[i+1] if i + 1 < len(ins) else None
-            nxt2 = ins[i+2] if i + 2 < len(ins) else None
+    def _body(self, node: ASTNode) -> None:
+        """Compile a loop/branch body, which the interpreter executes as a node."""
+        self._statement(node)
 
-            # Remove no-op patterns: DUP followed by POP
-            if cur.opcode == OpCode.DUP and nxt and nxt.opcode == OpCode.POP:
-                i += 2
-                continue
-
-            # Remove dead pushes: PUSH_CONST X followed by POP
-            if cur.opcode == OpCode.PUSH_CONST and nxt and nxt.opcode == OpCode.POP:
-                i += 2
-                continue
-
-            # Fold arithmetic on immediate constants: PUSH_CONST a, PUSH_CONST b, OP
-            if (
-                cur.opcode == OpCode.PUSH_CONST and
-                nxt and nxt.opcode == OpCode.PUSH_CONST and
-                nxt2 and nxt2.opcode in (OpCode.ADD, OpCode.SUB, OpCode.MUL, OpCode.DIV, OpCode.MOD,
-                                         OpCode.BIT_AND, OpCode.BIT_OR, OpCode.BIT_XOR,
-                                         OpCode.BIT_SHL, OpCode.BIT_SHR)
-            ):
-                try:
-                    a = consts[cur.operand]
-                    b = consts[nxt.operand]
-                    res = None
-                    if nxt2.opcode == OpCode.ADD:
-                        res = a + b
-                    elif nxt2.opcode == OpCode.SUB:
-                        res = a - b
-                    elif nxt2.opcode == OpCode.MUL:
-                        res = a * b
-                    elif nxt2.opcode == OpCode.DIV:
-                        res = a / b
-                    elif nxt2.opcode == OpCode.MOD:
-                        res = a % b
-                    elif nxt2.opcode == OpCode.BIT_AND:
-                        res = int(a) & int(b)
-                    elif nxt2.opcode == OpCode.BIT_OR:
-                        res = int(a) | int(b)
-                    elif nxt2.opcode == OpCode.BIT_XOR:
-                        res = int(a) ^ int(b)
-                    elif nxt2.opcode == OpCode.BIT_SHL:
-                        res = int(a) << int(b)
-                    elif nxt2.opcode == OpCode.BIT_SHR:
-                        res = int(a) >> int(b)
-                    if res is not None:
-                        idx = self.program.add_constant(res)
-                        optimized.append(BytecodeInstruction(OpCode.PUSH_CONST, idx))
-                        i += 3
-                        continue
-                except Exception:
-                    pass
-
-            # Remove unconditional jump to next instruction
-            if cur.opcode == OpCode.JMP and isinstance(cur.operand, int):
-                target = cur.operand
-                if target == i + 1:
-                    i += 1
-                    continue
-
-            # Default: keep instruction
-            optimized.append(cur)
-            i += 1
-
-        self.program.instructions = optimized
-    
-    def _optimize_jumps(self) -> None:
-        """Optimize jump instructions by eliminating chains and unreachable code."""
-        ins = self.program.instructions
-        if not ins:
-            return
-        
-        # Build jump target map
-        jump_targets = set()
-        for i, instr in enumerate(ins):
-            if instr.opcode in (OpCode.JMP, OpCode.JMP_IF, OpCode.JMP_IF_NOT):
-                if isinstance(instr.operand, int):
-                    jump_targets.add(instr.operand)
-        
-        # Remove unreachable code after unconditional jumps
-        optimized: List[BytecodeInstruction] = []
-        i = 0
-        while i < len(ins):
-            cur = ins[i]
-            
-            # If this is an unconditional jump, mark everything until target as unreachable
-            if cur.opcode == OpCode.JMP and isinstance(cur.operand, int):
-                target = cur.operand
-                optimized.append(cur)
-                
-                # Skip instructions until target (they're unreachable)
-                i += 1
-                while i < len(ins) and i < target:
-                    # Only keep labels/jumps that might be targets
-                    if i in jump_targets:
-                        optimized.append(ins[i])
-                    i += 1
-                continue
-            
-            # Eliminate jump chains: JMP to JMP -> direct jump
-            if cur.opcode == OpCode.JMP and isinstance(cur.operand, int):
-                target = cur.operand
-                # Follow jump chain
-                visited = set()
-                while target < len(ins) and target not in visited:
-                    visited.add(target)
-                    target_instr = ins[target]
-                    if target_instr.opcode == OpCode.JMP and isinstance(target_instr.operand, int):
-                        target = target_instr.operand
-                    else:
-                        break
-                
-                # If we found a better target, use it
-                if target != cur.operand:
-                    optimized.append(BytecodeInstruction(OpCode.JMP, target, cur.line, cur.column))
-                else:
-                    optimized.append(cur)
+    def _assignment(self, node: AssignmentNode, keep_value: bool) -> None:
+        self._expression(node.value)
+        if node.var_type == "shadow":
+            self._emit(OpCode.SECURE_STRING)
+        target = node.target
+        if isinstance(target, VariableNode):
+            if keep_value:
+                self._emit(OpCode.DUP)
+            if node.is_declaration:
+                self._emit(OpCode.DEFINE_NAME, (target.name, node.var_type))
             else:
-                optimized.append(cur)
-            
-            i += 1
-        
-        self.program.instructions = optimized
-    
-    def _eliminate_dead_code(self) -> None:
-        """Eliminate dead code (unreachable instructions)."""
-        ins = self.program.instructions
-        if not ins:
-            return
-        
-        # Mark all reachable instructions
-        reachable = set()
-        worklist = [0]  # Start from first instruction
-        
-        while worklist:
-            i = worklist.pop()
-            if i >= len(ins) or i in reachable:
-                continue
-            
-            reachable.add(i)
-            instr = ins[i]
-            
-            # Add next instruction if not a terminating instruction
-            if instr.opcode not in (OpCode.JMP, OpCode.RETURN, OpCode.HALT):
-                if i + 1 < len(ins):
-                    worklist.append(i + 1)
-            
-            # Add jump targets
-            if instr.opcode in (OpCode.JMP, OpCode.JMP_IF, OpCode.JMP_IF_NOT):
-                if isinstance(instr.operand, int):
-                    worklist.append(instr.operand)
-            
-            # For conditional jumps, also add fall-through
-            if instr.opcode == OpCode.JMP_IF or instr.opcode == OpCode.JMP_IF_NOT:
-                if i + 1 < len(ins):
-                    worklist.append(i + 1)
-        
-        # Keep only reachable instructions
-        optimized = [ins[i] for i in sorted(reachable)]
-        self.program.instructions = optimized
+                self._emit(OpCode.STORE_NAME, (target.name, node.var_type))
+        elif isinstance(target, IndexAccessNode):
+            if keep_value:
+                self._emit(OpCode.DUP)
+            self._index_store(target)
+        elif isinstance(target, PropertyAccessNode):
+            if keep_value:
+                self._emit(OpCode.DUP)
+            self._property_store(target)
+        else:
+            self._raise_runtime("Invalid assignment target")
 
-    def _literal_value(self, node: ASTNode) -> Union[int, float]:
-        """Extract numeric value from literal nodes."""
-        if isinstance(node, NumberNode):
-            return node.value
-        if isinstance(node, HexLiteralNode):
-            return node.value
-        if isinstance(node, BinaryLiteralNode):
-            return node.value
-        if isinstance(node, PhantomLiteralNode):
-            return node.value
-        raise ReaperRuntimeError("Unsupported literal for folding")
+    def _index_store(self, target: IndexAccessNode) -> None:
+        # value is already on the stack; the interpreter evaluates obj, index after it
+        self._expression(target.object)
+        self._expression(target.index)
+        self._emit(OpCode.INDEX_SET, node=target)
+
+    def _property_store(self, target: PropertyAccessNode) -> None:
+        self._expression(target.object)
+        self._emit(OpCode.PROP_SET, target.property_name, node=target)
+
+    def _target_assign(self, node: ASTNode, keep_value: bool) -> None:
+        self._expression(node.value)
+        if keep_value:
+            self._emit(OpCode.DUP)
+        self._expression(node.object)
+        if isinstance(node, IndexAssignNode):
+            self._expression(node.index)
+            self._emit(OpCode.INDEX_SET)
+        else:
+            self._emit(OpCode.PROP_SET, node.property_name)
+
+    def _compound_assignment(self, node: CompoundAssignmentNode, keep_value: bool) -> None:
+        operators = {"+=": "+", "-=": "-", "*=": "*", "/=": "/", "%=": "%"}
+        target = node.target
+        if not isinstance(target, (VariableNode, IndexAccessNode, PropertyAccessNode)):
+            self._raise_runtime("Invalid compound assignment target")
+            return
+        self._expression(target)                  # current value
+        self._expression(node.value)
+        operator = operators.get(node.operator)
+        if operator is None:
+            self._raise_runtime(f"Unknown compound assignment operator: {node.operator}")
+            return
+        self._emit(OpCode.BINARY_OP, operator)
+        if keep_value:
+            self._emit(OpCode.DUP)
+        if isinstance(target, VariableNode):
+            self._emit(OpCode.SET_NAME, target.name)
+        elif isinstance(target, IndexAccessNode):
+            self._index_store(target)             # re-evaluates obj/index, like the interpreter
+        else:
+            self._property_store(target)
+
+    def _if(self, node: IfNode) -> None:
+        end_jumps = []
+        branches = [(node.condition, node.if_body)]
+        branches += list(zip(node.elif_conditions or [], node.elif_bodies or []))
+        for condition, body in branches:
+            self._expression(condition)
+            self._emit(OpCode.TO_BOOL, node=node)
+            skip = self._emit(OpCode.JMP_IF_NOT, 0)
+            self._body(body)
+            end_jumps.append(self._emit(OpCode.JMP, 0))
+            self._patch(skip, self._here())
+        if node.else_body:
+            self._body(node.else_body)
+        for jump in end_jumps:
+            self._patch(jump, self._here())
+
+    def _loop(self, body: ASTNode, has_iterator: bool, var_name: Optional[str] = None,
+              mode: Optional[str] = None) -> None:
+        loop = _Loop(self._scope_depth, len(self._tries), has_iterator)
+        self._loops.append(loop)
+        top = self._here()
+        loop.continue_target = top
+        advance = self._emit(OpCode.FOR_ITER, (var_name, mode, 0)) if has_iterator else None
+        self._body(body)
+        self._emit(OpCode.JMP, top)
+        exit_pc = self._here()
+        if advance is not None:
+            self._patch(advance, exit_pc)
+        # break: an iterator, if any, is still on the stack
+        if has_iterator and loop.break_jumps:
+            skip = self._emit(OpCode.JMP, 0)
+            pop_pc = self._here()
+            self._emit(OpCode.POP)
+            for jump in loop.break_jumps:
+                self._patch(jump, pop_pc)
+            self._patch(skip, self._here())
+        else:
+            for jump in loop.break_jumps:
+                self._patch(jump, exit_pc)
+        for jump in loop.continue_jumps:
+            self._patch(jump, top)
+        self._loops.pop()
+
+    def _shamble(self, node: ShambleNode) -> None:
+        self._expression(node.start)
+        self._expression(node.end)
+        self._emit(OpCode.ITER_RANGE)
+        self._loop(node.body, True, node.var_name, "range")
+
+    def _decay(self, node: DecayNode) -> None:
+        self._expression(node.iterable)
+        self._emit(OpCode.ITER_LIST)
+        self._loop(node.body, True, node.var_name, "decay")
+
+    def _soulless(self, node: SoullessNode) -> None:
+        self._loop(node.body, False)
+
+    def _judge(self, node: JudgeNode) -> None:
+        self._expression(node.expression)
+        end_jumps = []
+        for case_value, case_body in node.cases:
+            self._emit(OpCode.DUP)
+            self._expression(case_value)
+            self._emit(OpCode.EQ)                 # plain ==, as the interpreter does
+            skip = self._emit(OpCode.JMP_IF_NOT, 0)
+            self._emit(OpCode.POP)
+            self._body(case_body)
+            end_jumps.append(self._emit(OpCode.JMP, 0))
+            self._patch(skip, self._here())
+        self._emit(OpCode.POP)
+        if node.default_body:
+            self._body(node.default_body)
+        for jump in end_jumps:
+            self._patch(jump, self._here())
+
+    def _unwind_to(self, scope_depth: int, try_depth: int) -> None:
+        """Leave try regions (running their finally code) and scopes for an early exit."""
+        for region in reversed(self._tries[try_depth:]):
+            while self._scope_depth > region.scope_depth:
+                self._emit(OpCode.POP_SCOPE)
+                self._scope_depth -= 1
+            self._emit(OpCode.POP_TRY)
+            if region.finally_block is not None:
+                saved_tries = self._tries
+                self._tries = self._tries[:self._tries.index(region)]
+                self._body(region.finally_block)
+                self._tries = saved_tries
+        while self._scope_depth > scope_depth:
+            self._emit(OpCode.POP_SCOPE)
+            self._scope_depth -= 1
+
+    def _loop_exit(self, is_break: bool) -> None:
+        if not self._loops:
+            self._emit(OpCode.RAISE_FLOW, "flee" if is_break else "persist")
+            return
+        loop = self._loops[-1]
+        saved_depth = self._scope_depth
+        self._unwind_to(loop.scope_depth, loop.try_depth)
+        jump = self._emit(OpCode.JMP, 0)
+        (loop.break_jumps if is_break else loop.continue_jumps).append(jump)
+        self._scope_depth = saved_depth
+
+    def _reap(self, node: ReapNode) -> None:
+        if node.value is not None:
+            self._expression(node.value)
+        else:
+            self._emit(OpCode.PUSH_CONST, self._const(None))
+        if self._tries:
+            # Run enclosing finally blocks; RETURN_VALUE itself unwinds scopes.
+            saved_depth = self._scope_depth
+            self._unwind_to(self._scope_depth, 0)
+            self._scope_depth = saved_depth
+        self._emit(OpCode.RETURN_VALUE)
+
+    def _risk(self, node: RiskNode) -> None:
+        outer = None
+        if node.finally_block is not None:
+            # Errors escaping the catch blocks must still run finally.
+            outer = self._emit(OpCode.SETUP_TRY, 0)
+            self._tries.append(_Try(self._scope_depth, node.finally_block))
+        handler = self._emit(OpCode.SETUP_TRY, 0)
+        self._tries.append(_Try(self._scope_depth, None))
+        self._body(node.try_block)
+        self._tries.pop()
+        self._emit(OpCode.POP_TRY)
+        done = [self._emit(OpCode.JMP, 0)]
+
+        # Handler: the exception is on the stack.
+        self._patch(handler, self._here())
+        self._emit(OpCode.WRAP_EXC, node=node)
+        for exception_type, var_name, catch_block in node.catch_blocks:
+            self._emit(OpCode.MATCH_EXC, (exception_type, "risk"))
+            skip = self._emit(OpCode.JMP_IF_NOT, 0)
+            if var_name:
+                self._emit(OpCode.PUSH_SCOPE)
+                self._scope_depth += 1
+                self._emit(OpCode.DEFINE_NAME, (var_name, "ReaperError"), node=node)
+            else:
+                self._emit(OpCode.POP)
+            self._body(catch_block)
+            if var_name:
+                self._scope_depth -= 1
+                self._emit(OpCode.POP_SCOPE)
+            done.append(self._emit(OpCode.JMP, 0))
+            self._patch(skip, self._here())
+        self._emit(OpCode.RERAISE)
+
+        for jump in done:
+            self._patch(jump, self._here())
+        if outer is not None:
+            self._tries.pop()
+            self._emit(OpCode.POP_TRY)
+            self._body(node.finally_block)
+            skip_handler = self._emit(OpCode.JMP, 0)
+            self._patch(outer, self._here())
+            self._body(node.finally_block)
+            self._emit(OpCode.RERAISE)
+            self._patch(skip_handler, self._here())
+
+    def _exploit(self, node: ExploitNode) -> None:
+        handler = self._emit(OpCode.SETUP_TRY, 0)
+        self._tries.append(_Try(self._scope_depth, None))
+        for statement in node.try_block.statements:
+            self._statement(statement)
+        self._tries.pop()
+        self._emit(OpCode.POP_TRY)
+        done = [self._emit(OpCode.JMP, 0)]
+        self._patch(handler, self._here())
+        for exception_name, catch_block in node.catch_blocks:
+            self._emit(OpCode.MATCH_EXC, (exception_name, "exploit"))
+            skip = self._emit(OpCode.JMP_IF_NOT, 0)
+            self._emit(OpCode.POP)
+            for statement in catch_block.statements:
+                self._statement(statement)
+            done.append(self._emit(OpCode.JMP, 0))
+            self._patch(skip, self._here())
+        self._emit(OpCode.RERAISE)
+        for jump in done:
+            self._patch(jump, self._here())
+
+    def _raise_exception(self, node: RaiseExceptionNode) -> None:
+        if node.exception_message is not None:
+            self._expression(node.exception_message)
+        self._emit(OpCode.RAISE_EXC, (node.exception_type, node.exception_message is not None))
+
+    def _raise_runtime(self, message: str) -> None:
+        self._emit(OpCode.PUSH_CONST, self._const(message))
+        self._emit(OpCode.RAISE_EXC, ("ReaperRuntimeError", True))
+
+    # ----------------------------------------------------------- functions
+
+    def _compile_function_body(self, const_index: int, node: Any) -> None:
+        entry = self._here()
+        self.program.function_entries[const_index] = entry
+        saved = (self._scope_depth, self._loops, self._tries, self._node)
+        self._scope_depth, self._loops, self._tries, self._node = 0, [], [], node
+        if isinstance(node, LambdaNode) and not isinstance(node.body, BlockNode):
+            self._expression(node.body)
+            self._emit(OpCode.RETURN_VALUE)
+        else:
+            self._statement(node.body)
+            self._emit(OpCode.PUSH_CONST, self._const(None))
+            self._emit(OpCode.RETURN_VALUE)
+        self._scope_depth, self._loops, self._tries, self._node = saved
+        name = getattr(node, "name", None)
+        if name and name not in self.program.functions:
+            self.program.add_function(name, entry, [p[0] for p in node.params])
+
+    # ---------------------------------------------------------- expressions
+
+    def _expression(self, node: ASTNode) -> None:
+        previous, self._node = self._node, node
+        try:
+            self._compile_expression(node)
+        finally:
+            self._node = previous
+
+    def _compile_expression(self, node: ASTNode) -> None:
+        if isinstance(node, (NumberNode, BooleanNode, HexLiteralNode,
+                             BinaryLiteralNode, PhantomLiteralNode)):
+            self._emit(OpCode.PUSH_CONST, self._const(node.value))
+        elif isinstance(node, VoidNode):
+            self._emit(OpCode.PUSH_CONST, self._const(None))
+        elif isinstance(node, (StringNode, SpecterLiteralNode)):
+            self._emit(OpCode.LOAD_STR, self._const(node.value))
+        elif isinstance(node, ShadowLiteralNode):
+            self._emit(OpCode.LOAD_STR, self._const(node.value))
+            self._emit(OpCode.SECURE_STRING)
+        elif isinstance(node, InterpolatedStringNode):
+            for part in node.parts:
+                if isinstance(part, StringNode):
+                    self._emit(OpCode.PUSH_CONST, self._const(part.value))
+                else:
+                    self._expression(part)
+            self._emit(OpCode.BUILD_STRING, len(node.parts))
+        elif isinstance(node, ArrayNode):
+            for element in node.elements:
+                self._expression(element)
+            self._emit(OpCode.BUILD_ARRAY, len(node.elements))
+        elif isinstance(node, DictionaryNode):
+            for key, value in node.pairs:
+                self._expression(key)
+                self._expression(value)
+            self._emit(OpCode.BUILD_DICT, len(node.pairs))
+        elif isinstance(node, VariableNode):
+            self._emit(OpCode.LOAD_NAME, node.name)
+        elif isinstance(node, AssignmentNode):
+            self._assignment(node, keep_value=True)
+        elif isinstance(node, CompoundAssignmentNode):
+            self._compound_assignment(node, keep_value=True)
+        elif isinstance(node, (IndexAssignNode, PropertyAssignNode)):
+            self._target_assign(node, keep_value=True)
+        elif isinstance(node, BinaryOpNode):
+            self._expression(node.left)
+            self._expression(node.right)
+            self._emit(OpCode.BINARY_OP, node.operator)
+        elif isinstance(node, UnaryOpNode):
+            self._expression(node.operand)
+            self._emit(OpCode.UNARY_OP, node.operator)
+        elif isinstance(node, ComparisonNode):
+            self._expression(node.left)
+            self._expression(node.right)
+            self._emit(OpCode.COMPARE_OP, node.operator)
+        elif isinstance(node, LogicalOpNode):
+            self._logical(node)
+        elif isinstance(node, IndexAccessNode):
+            self._expression(node.object)
+            self._expression(node.index)
+            self._emit(OpCode.INDEX_GET)
+        elif isinstance(node, SliceNode):
+            self._expression(node.object)
+            for part in (node.start, node.end, node.step):
+                if part is not None:
+                    self._expression(part)
+            self._emit(OpCode.SLICE, (node.start is not None, node.end is not None,
+                                      node.step is not None))
+        elif isinstance(node, PropertyAccessNode):
+            self._expression(node.object)
+            self._emit(OpCode.PROP_GET, node.property_name)
+        elif isinstance(node, MethodCallNode):
+            self._expression(node.object)
+            for argument in node.arguments:
+                self._expression(argument)
+            self._emit(OpCode.CALL_METHOD, (node.method_name, len(node.arguments)))
+        elif isinstance(node, CallNode):
+            for argument in node.arguments:
+                self._expression(argument)
+            self._emit(OpCode.CALL_NAME, (node.function_name, len(node.arguments)))
+        elif isinstance(node, LambdaNode):
+            self._emit(OpCode.PUSH_CONST, self._function_const(node))
+        elif isinstance(node, SpawnNode):
+            self._emit(OpCode.SPAWN, self.program.add_constant(node))
+        elif isinstance(node, _DELEGATED):
+            self._emit(OpCode.EXEC_NODE, self.program.add_constant(node))
+        elif isinstance(node, (InfectNode, TombNode, BlockNode, IfNode, ShambleNode,
+                               DecayNode, SoullessNode, JudgeNode, RiskNode, ExploitNode,
+                               HarvestNode, RestNode, FleeNode, PersistNode, ReapNode,
+                               RaiseExceptionNode, ExpressionStatementNode)):
+            # Statements evaluate to void when used for their value.
+            self._statement(node)
+            self._emit(OpCode.PUSH_CONST, self._const(None))
+        else:
+            raise ReaperRuntimeError(
+                f"Bytecode compiler: unsupported node {type(node).__name__}",
+                getattr(node, "line", 0), getattr(node, "column", 0))
+
+    def _logical(self, node: LogicalOpNode) -> None:
+        self._expression(node.left)
+        self._emit(OpCode.TO_BOOL, node=node)
+        if node.operator not in ("corrupt", "infest"):
+            self._raise_runtime(f"Unknown logical operator: {node.operator}")
+            return
+        if not node.short_circuit:
+            self._expression(node.right)
+            self._emit(OpCode.TO_BOOL, node=node)
+            self._emit(OpCode.LOG_AND if node.operator == "corrupt" else OpCode.LOG_OR)
+            return
+        self._emit(OpCode.DUP)
+        jump = self._emit(OpCode.JMP_IF_NOT if node.operator == "corrupt" else OpCode.JMP_IF, 0)
+        self._emit(OpCode.POP)
+        self._expression(node.right)
+        self._emit(OpCode.TO_BOOL, node=node)
+        self._patch(jump, self._here())
